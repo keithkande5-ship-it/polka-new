@@ -28,3 +28,18 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Imported Polka application
+
+- Keep Polka's account, balance, cashier, market-feed, and operator flows explicitly browser-only previews; the source has no production service or server-side authorization.
+- Keep fee schedules and trade eligibility centralized in `src/lib/trading-rules.ts`, because all simulated order paths must share the same tested rules.
+- Keep global order entry available at every viewport so users can place a preview order without getting stranded on search or intermediate screens.
+- Treat fallback market data as synthetic and pause Flash execution when a live feed is unavailable; this app does not include a production settlement oracle.
+- Derive binary-market No chart history from the Yes series with `mirrorHistory` to keep both curves mathematically aligned.
+- Scope browser-persisted user state by profile helpers in `src/lib/trading-rules.ts` so simulated users do not share timers.
+- Centralize share and referral URLs in `src/lib/site.ts` so a later domain cutover has one source of truth.
+- Keep market presentation tied to market lifecycle and settlement data; display helpers must not settle markets.
+- Read and write market discussions through validated browser-only helpers after hydration and explicit user actions to preserve saved comments.
+- Keep operator workspaces on the shared React preview session and store actions; PINs and gestures are concealment, not authorization.
+- Store market close times and spotlight choices on the market model and update them through `editMarket` so operator edits reach public views.
+- Keep the imported TanStack file routes and root-level `StoreProvider` shell together; this preserves the existing app-wide preview state and navigation behavior.
