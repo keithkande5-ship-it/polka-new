@@ -1,0 +1,19 @@
+{
+  "source": "code archive",
+  "archive": "polka4-main.zip",
+  "capabilities": [
+    { "capability": "application code and routes", "source": "TanStack Start archive", "outcome": "Importing the Polka pages and browser-only prototype", "status": "pending", "next_action": "Verify the imported app in the preview" },
+    { "capability": "database schema", "source": "No schema or database provider found", "outcome": "No existing schema to migrate", "status": "verified", "next_action": "None for this code-only import" },
+    { "capability": "application records", "source": "No database export attached; local browser state only", "outcome": "No server-side records were present in the archive", "status": "verified", "next_action": "None for this code-only import" },
+    { "capability": "auth identities", "source": "Client-side preview sign-in only", "outcome": "No production auth provider or user export found", "status": "verified", "next_action": "Real user accounts require a separate Lovable Cloud implementation" },
+    { "capability": "authorization", "source": "Client-side preview admin state", "outcome": "No server-enforced roles or permissions found", "status": "verified", "next_action": "Do not use the preview admin controls for production access" },
+    { "capability": "uploaded file bytes", "source": "Archive public logos and existing source-hosted asset pointers", "outcome": "Importing available local branding and checking remaining media", "status": "pending", "next_action": "Verify all displayed images in the preview" },
+    { "capability": "external providers", "source": "No production API integrations found", "outcome": "External feeds, login, and payments are simulated or linked externally", "status": "verified", "next_action": "No provider credentials required for the prototype" },
+    { "capability": "public endpoints", "source": "Static sitemap route only", "outcome": "No application API endpoints found", "status": "verified", "next_action": "None" },
+    { "capability": "callbacks and webhooks", "source": "No callbacks or webhooks found", "outcome": "None to migrate", "status": "verified", "next_action": "None" },
+    { "capability": "schedules", "source": "No scheduled jobs found", "outcome": "None to migrate", "status": "verified", "next_action": "None" },
+    { "capability": "secrets", "source": "No environment variables or secret files found", "outcome": "No secret values required by the imported prototype", "status": "verified", "next_action": "None" },
+    { "capability": "cutover", "source": "Source README names polka4.lovable.app", "outcome": "No live service cutover performed", "status": "pending", "next_action": "Update canonical and share URLs before publishing under another domain" },
+    { "capability": "verification", "source": "Imported source", "outcome": "Awaiting route, preview, and test verification", "status": "pending", "next_action": "Run the project tests and inspect the live preview" }
+  ]
+}
