@@ -74,6 +74,113 @@ export type Database = {
         }
         Relationships: []
       }
+      eat_rounds: {
+        Row: {
+          created_at: string
+          id: string
+          round_date: string
+          settled: boolean | null
+          settled_price: number | null
+          symbol: string
+          target_price: number
+          winning_side: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          round_date: string
+          settled?: boolean | null
+          settled_price?: number | null
+          symbol: string
+          target_price: number
+          winning_side?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          round_date?: string
+          settled?: boolean | null
+          settled_price?: number | null
+          symbol?: string
+          target_price?: number
+          winning_side?: string | null
+        }
+        Relationships: []
+      }
+      issues: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          email: string | null
+          id: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          email?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          email?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      market_comments: {
+        Row: {
+          created_at: string
+          id: string
+          likes: number | null
+          market_id: string
+          stake_amount: number | null
+          stake_side: string | null
+          text: string
+          user_handle: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          likes?: number | null
+          market_id: string
+          stake_amount?: number | null
+          stake_side?: string | null
+          text: string
+          user_handle: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          likes?: number | null
+          market_id?: string
+          stake_amount?: number | null
+          stake_side?: string | null
+          text?: string
+          user_handle?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_comments_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       markets: {
         Row: {
           category: string
@@ -125,6 +232,39 @@ export type Database = {
           title?: string
           volume?: string | null
           winning_outcome?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          href: string | null
+          id: string
+          kind: string
+          read: boolean | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          kind: string
+          read?: boolean | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          kind?: string
+          read?: boolean | null
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -205,6 +345,33 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_commissions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          referred_user_id: string | null
+          referrer_id: string
+          source_trade_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          referred_user_id?: string | null
+          referrer_id: string
+          source_trade_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          referred_user_id?: string | null
+          referrer_id?: string
+          source_trade_id?: string | null
+        }
+        Relationships: []
+      }
       vault_ledger: {
         Row: {
           amount: number
@@ -237,7 +404,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      place_order: {
+        Args: {
+          p_market_id: string
+          p_multiplier: number
+          p_outcome: string
+          p_stake: number
+        }
+        Returns: Json
+      }
+      settle_market: {
+        Args: { p_market_id: string; p_winning_outcome: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
