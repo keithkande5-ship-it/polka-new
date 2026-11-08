@@ -24,6 +24,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as MarketIdRouteImport } from './routes/market.$id'
 import { Route as RHandleRouteImport } from './routes/r.$handle'
+import { Route as ApiPublicPalplussWebhookRouteImport } from './routes/api/public/palpluss-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,6 +101,12 @@ const RHandleRoute = RHandleRouteImport.update({
   path: '/r/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPalplussWebhookRoute =
+  ApiPublicPalplussWebhookRouteImport.update({
+    id: '/api/public/palpluss-webhook',
+    path: '/api/public/palpluss-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/market/$id': typeof MarketIdRoute
   '/r/$handle': typeof RHandleRoute
+  '/api/public/palpluss-webhook': typeof ApiPublicPalplussWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +142,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/market/$id': typeof MarketIdRoute
   '/r/$handle': typeof RHandleRoute
+  '/api/public/palpluss-webhook': typeof ApiPublicPalplussWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +161,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/market/$id': typeof MarketIdRoute
   '/r/$handle': typeof RHandleRoute
+  '/api/public/palpluss-webhook': typeof ApiPublicPalplussWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/market/$id'
     | '/r/$handle'
+    | '/api/public/palpluss-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/market/$id'
     | '/r/$handle'
+    | '/api/public/palpluss-webhook'
   id:
     | '__root__'
     | '/'
@@ -205,6 +217,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/market/$id'
     | '/r/$handle'
+    | '/api/public/palpluss-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,6 +236,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   MarketIdRoute: typeof MarketIdRoute
   RHandleRoute: typeof RHandleRoute
+  ApiPublicPalplussWebhookRoute: typeof ApiPublicPalplussWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -332,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RHandleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/palpluss-webhook': {
+      id: '/api/public/palpluss-webhook'
+      path: '/api/public/palpluss-webhook'
+      fullPath: '/api/public/palpluss-webhook'
+      preLoaderRoute: typeof ApiPublicPalplussWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -351,6 +372,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   MarketIdRoute: MarketIdRoute,
   RHandleRoute: RHandleRoute,
+  ApiPublicPalplussWebhookRoute: ApiPublicPalplussWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
