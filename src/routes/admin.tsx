@@ -91,7 +91,7 @@ const workspaces = [
   { id: "comms", label: "Broadcast & Comms", icon: Radio },
 ];
 function Admin() {
-  useStore();
+  const { openAuth } = useStore();
   const [active, setActive] = useState("treasury");
   const [drawer, setDrawer] = useState(false);
   const [role, setRole] = useState<"operator" | "finance" | "super_admin" | null>(null);
@@ -130,8 +130,8 @@ function Admin() {
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       if (active) void checkAccess();
     });
-    return () => { active = false; };
     listener.subscription.unsubscribe();
+    return () => { active = false; };
   }, []);
 
   if (!accessChecked)
@@ -143,6 +143,7 @@ function Admin() {
         <p className="my-4 text-sm text-muted-foreground">
           A signed-in account with an assigned Polka staff role is required to access this workspace.
         </p>
+        <Button onClick={() => openAuth()}>Sign in</Button>
       </div>
     );
   const nav = (
