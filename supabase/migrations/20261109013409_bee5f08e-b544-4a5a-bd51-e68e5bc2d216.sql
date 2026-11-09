@@ -1,0 +1,1 @@
+ALTER TABLE public.markets ALTER COLUMN is_public SET DEFAULT true;
