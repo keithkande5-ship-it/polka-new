@@ -1,9 +1,8 @@
 import { vaultPost, getVault } from "@/lib/trading-rules";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
-  ShieldAlert,
   Download,
   Activity,
   Snowflake,
@@ -34,7 +33,8 @@ import {
   BroadcastOperations,
 } from "@/components/polka/AdminCommandCenter";
 import { useStore } from "@/lib/store";
-import { setAdmin, useAdmin, type AdminRole } from "@/lib/admin";
+import { setAdmin, useAdmin } from "@/lib/admin";
+import { supabase } from "@/integrations/supabase/client";
 import {
   addCategory,
   addMarket,
@@ -83,12 +83,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 const card = "rounded-lg border bg-card p-4";
-const roles: { id: AdminRole; label: string }[] = [
-  { id: "operator", label: "Operator" },
-  { id: "finance", label: "Finance" },
-  { id: "super_admin", label: "Super admin" },
-];
-
 const workspaces = [
   { id: "treasury", label: "Treasury & Float", icon: Landmark },
   { id: "markets", label: "Markets Desk", icon: LayoutDashboard },
@@ -97,87 +91,47 @@ const workspaces = [
   { id: "comms", label: "Broadcast & Comms", icon: Radio },
 ];
 function Admin() {
-  const { user, openAuth } = useStore();
-  const { role } = useAdmin();
-  const { ops } = Route.useSearch();
-  const [unlocked, setUnlocked] = useState(false);
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
+  const { user } = useStore();
   const [active, setActive] = useState("treasury");
   const [drawer, setDrawer] = useState(false);
-  const [checked, setChecked] = useState(false);
-  const navigate = useNavigate();
+  const [role, setRole] = useState<"operator" | "finance" | "super_admin" | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
+
   useEffect(() => {
-    let ok = false;
-    try {
-      ok = sessionStorage.getItem("polka-ops-unlocked") === "1";
-    } catch {
-      ok = false;
+    let active = true;
+    setAccessChecked(false);
+    setRole(null);
+    if (!user) {
+      setAccessChecked(true);
+      return () => { active = false; };
     }
-    setUnlocked(ok);
-    setChecked(true);
-    if (!ok && ops !== "1") navigate({ to: "/", replace: true });
-  }, [ops, navigate]);
-  if (!unlocked && ops !== "1") return null;
-  if (!unlocked || !user)
+    void supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          toast.error("Could not verify operator access. Please try again.");
+        } else if (data?.length) {
+          const roles = data.map((row) => row.role);
+          setRole(roles.includes("super_admin") ? "super_admin" : roles.includes("finance") ? "finance" : "operator");
+        }
+        setAccessChecked(true);
+      });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  if (!accessChecked)
+    return <div className="mx-auto max-w-sm px-5 py-20 text-sm text-muted-foreground">Verifying operator access…</div>;
+  if (!user || !role)
     return (
       <div className="mx-auto max-w-sm px-5 py-20">
-        <ShieldAlert className="mb-5 size-8 text-chart-4" />
         <h1 className="text-2xl font-semibold">Operator access</h1>
         <p className="my-4 text-sm text-muted-foreground">
-          Frontend preview only. This PIN is not production security; no real accounts or money are
-          managed here.
+          Sign in with an account that has an assigned Polka staff role to access this workspace.
         </p>
-        {!unlocked && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (pin !== "5050") {
-                setError("Incorrect preview PIN");
-                return;
-              }
-              try {
-                sessionStorage.setItem("polka-ops-unlocked", "1");
-              } catch {}
-              setUnlocked(true);
-              setError("");
-            }}
-          >
-            <label className="text-xs text-muted-foreground">
-              Preview PIN: 5050
-              <Input
-                aria-label="Operator PIN"
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-              />
-            </label>
-            {error && (
-              <p role="alert" className="my-2 text-sm text-down">
-                {error}
-              </p>
-            )}
-            <Button className="mt-4 w-full">Unlock preview</Button>
-          </form>
-        )}
-        {unlocked && !user && <Button onClick={() => openAuth()}>Sign in to preview</Button>}
-      </div>
-    );
-  if (!role)
-    return (
-      <div className="mx-auto max-w-lg px-5 py-16">
-        <h1 className="text-2xl font-semibold">Choose a preview role</h1>
-        <p className="my-4 text-sm text-muted-foreground">
-          Roles are session labels, not server-enforced permissions.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {roles.map((r) => (
-            <Button key={r.id} onClick={() => setAdmin({ role: r.id })}>
-              {r.label}
-            </Button>
-          ))}
-        </div>
+        {!user && <Button onClick={() => useStore()}>Sign in</Button>}
       </div>
     );
   const nav = (
@@ -188,9 +142,8 @@ function Admin() {
           Admin command center
         </p>
         <p className="mt-3 text-[10px] text-up">
-          ● {role.replace("_", " ").toUpperCase()} · LIVE UI
+          ● {role.replace("_", " ").toUpperCase()}
         </p>
-        <p className="mt-2 text-[10px] text-muted-foreground">SESSION PREVIEW</p>
       </div>
       <nav aria-label="Admin workspaces" className="space-y-2">
         {workspaces.map((w) => (
@@ -210,13 +163,6 @@ function Admin() {
         ))}
       </nav>
       <div className="mt-8 space-y-3 border-t pt-5">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-xs"
-          onClick={() => setAdmin({ role: null })}
-        >
-          Switch role
-        </Button>
         <Button variant="ghost" asChild className="w-full justify-start text-xs">
           <Link to="/">
             <ArrowLeft />
