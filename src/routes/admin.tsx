@@ -128,10 +128,12 @@ function Admin() {
     };
     void checkAccess();
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      if (active) void checkAccess();
+      if (active) window.setTimeout(() => { if (active) void checkAccess(); }, 0);
     });
-    listener.subscription.unsubscribe();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (!accessChecked)
@@ -204,7 +206,7 @@ function Admin() {
             <h1 className="text-lg font-semibold">
               {workspaces.find((w) => w.id === active)?.label}
             </h1>
-            <span className="ml-auto font-mono text-[10px] text-muted-foreground">PREVIEW</span>
+            <span className="ml-auto font-mono text-[10px] text-muted-foreground">STAFF WORKSPACE</span>
           </header>
           <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
             <div className={active === "treasury" ? "" : "hidden"}>
