@@ -40,6 +40,6 @@ use the editor.
 - Centralize share and referral URLs in `src/lib/site.ts` so a later domain cutover has one source of truth.
 - Keep market presentation tied to market lifecycle and settlement data; display helpers must not settle markets.
 - Read and write market discussions through validated browser-only helpers after hydration and explicit user actions to preserve saved comments.
-- Keep operator workspaces on the shared React preview session and store actions; PINs and gestures are concealment, not authorization.
+- Gate the operator workspace with the authenticated `public.user_roles` record, while enforcing authorization again in database functions and row policies; a screen gate alone cannot secure financial actions.
 - Store market close times and spotlight choices on the market model and update them through `editMarket` so operator edits reach public views.
 - Keep the imported TanStack file routes and root-level `StoreProvider` shell together; this preserves the existing app-wide preview state and navigation behavior.
