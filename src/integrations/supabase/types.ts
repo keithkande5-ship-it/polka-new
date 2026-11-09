@@ -222,6 +222,7 @@ export type Database = {
           hot: boolean | null
           id: string
           image: string | null
+          is_public: boolean
           news: Json | null
           oracle: string
           outcomes: Json
@@ -247,6 +248,7 @@ export type Database = {
           hot?: boolean | null
           id: string
           image?: string | null
+          is_public?: boolean
           news?: Json | null
           oracle: string
           outcomes: Json
@@ -272,6 +274,7 @@ export type Database = {
           hot?: boolean | null
           id?: string
           image?: string | null
+          is_public?: boolean
           news?: Json | null
           oracle?: string
           outcomes?: Json
@@ -460,16 +463,19 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          is_public: boolean
           key: string
           updated_at: string
           value: Json
         }
         Insert: {
+          is_public?: boolean
           key: string
           updated_at?: string
           value: Json
         }
         Update: {
+          is_public?: boolean
           key?: string
           updated_at?: string
           value?: Json
