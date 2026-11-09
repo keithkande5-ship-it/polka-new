@@ -91,7 +91,7 @@ const workspaces = [
   { id: "comms", label: "Broadcast & Comms", icon: Radio },
 ];
 function Admin() {
-  const { user, openAuth } = useStore();
+  useStore();
   const [active, setActive] = useState("treasury");
   const [drawer, setDrawer] = useState(false);
   const [role, setRole] = useState<"operator" | "finance" | "super_admin" | null>(null);
@@ -99,17 +99,19 @@ function Admin() {
 
   useEffect(() => {
     let active = true;
-    setAccessChecked(false);
-    setRole(null);
-    if (!user) {
-      setAccessChecked(true);
-      return () => { active = false; };
-    }
-    void supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .then(({ data, error }) => {
+    const checkAccess = async () => {
+      setAccessChecked(false);
+      setRole(null);
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) {
+          if (active) setAccessChecked(true);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", authData.user.id);
         if (!active) return;
         if (error) {
           toast.error("Could not verify operator access. Please try again.");
@@ -118,25 +120,29 @@ function Admin() {
           setRole(roles.includes("super_admin") ? "super_admin" : roles.includes("finance") ? "finance" : "operator");
         }
         setAccessChecked(true);
-      })
-      .catch(() => {
+      } catch {
         if (!active) return;
         toast.error("Could not verify operator access. Please try again.");
         setAccessChecked(true);
-      });
+      }
+    };
+    void checkAccess();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      if (active) void checkAccess();
+    });
     return () => { active = false; };
-  }, [user?.id]);
+    listener.subscription.unsubscribe();
+  }, []);
 
   if (!accessChecked)
     return <div className="mx-auto max-w-sm px-5 py-20 text-sm text-muted-foreground">Verifying operator access…</div>;
-  if (!user || !role)
+  if (!role)
     return (
       <div className="mx-auto max-w-sm px-5 py-20">
         <h1 className="text-2xl font-semibold">Operator access</h1>
         <p className="my-4 text-sm text-muted-foreground">
-          Sign in with an account that has an assigned Polka staff role to access this workspace.
+          A signed-in account with an assigned Polka staff role is required to access this workspace.
         </p>
-        {!user && <Button onClick={() => openAuth()}>Sign in</Button>}
       </div>
     );
   const nav = (
