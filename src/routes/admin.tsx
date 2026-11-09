@@ -91,7 +91,7 @@ const workspaces = [
   { id: "comms", label: "Broadcast & Comms", icon: Radio },
 ];
 function Admin() {
-  const { user } = useStore();
+  const { user, openAuth } = useStore();
   const [active, setActive] = useState("treasury");
   const [drawer, setDrawer] = useState(false);
   const [role, setRole] = useState<"operator" | "finance" | "super_admin" | null>(null);
@@ -131,7 +131,7 @@ function Admin() {
         <p className="my-4 text-sm text-muted-foreground">
           Sign in with an account that has an assigned Polka staff role to access this workspace.
         </p>
-        {!user && <Button onClick={() => useStore()}>Sign in</Button>}
+        {!user && <Button onClick={() => openAuth()}>Sign in</Button>}
       </div>
     );
   const nav = (
