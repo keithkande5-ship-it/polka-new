@@ -118,6 +118,11 @@ function Admin() {
           setRole(roles.includes("super_admin") ? "super_admin" : roles.includes("finance") ? "finance" : "operator");
         }
         setAccessChecked(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        toast.error("Could not verify operator access. Please try again.");
+        setAccessChecked(true);
       });
     return () => { active = false; };
   }, [user?.id]);
