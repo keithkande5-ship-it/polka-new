@@ -1,6 +1,6 @@
 import { vaultPost, getVault } from "@/lib/trading-rules";
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   ShieldAlert,
@@ -34,7 +34,8 @@ import {
   BroadcastOperations,
 } from "@/components/polka/AdminCommandCenter";
 import { useStore } from "@/lib/store";
-import { setAdmin, useAdmin, type AdminRole } from "@/lib/admin";
+import { setAdmin, useAdmin } from "@/lib/admin";
+import { supabase } from "@/integrations/supabase/client";
 import {
   addCategory,
   addMarket,
@@ -83,12 +84,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 const card = "rounded-lg border bg-card p-4";
-const roles: { id: AdminRole; label: string }[] = [
-  { id: "operator", label: "Operator" },
-  { id: "finance", label: "Finance" },
-  { id: "super_admin", label: "Super admin" },
-];
-
 const workspaces = [
   { id: "treasury", label: "Treasury & Float", icon: Landmark },
   { id: "markets", label: "Markets Desk", icon: LayoutDashboard },
@@ -97,87 +92,61 @@ const workspaces = [
   { id: "comms", label: "Broadcast & Comms", icon: Radio },
 ];
 function Admin() {
-  const { user, openAuth } = useStore();
-  const { role } = useAdmin();
-  const { ops } = Route.useSearch();
-  const [unlocked, setUnlocked] = useState(false);
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
+  const { openAuth } = useStore();
   const [active, setActive] = useState("treasury");
   const [drawer, setDrawer] = useState(false);
-  const [checked, setChecked] = useState(false);
-  const navigate = useNavigate();
+  const [role, setRole] = useState<"operator" | "finance" | "super_admin" | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
+
   useEffect(() => {
-    let ok = false;
-    try {
-      ok = sessionStorage.getItem("polka-ops-unlocked") === "1";
-    } catch {
-      ok = false;
-    }
-    setUnlocked(ok);
-    setChecked(true);
-    if (!ok && ops !== "1") navigate({ to: "/", replace: true });
-  }, [ops, navigate]);
-  if (!unlocked && ops !== "1") return null;
-  if (!unlocked || !user)
-    return (
-      <div className="mx-auto max-w-sm px-5 py-20">
-        <ShieldAlert className="mb-5 size-8 text-chart-4" />
-        <h1 className="text-2xl font-semibold">Operator access</h1>
-        <p className="my-4 text-sm text-muted-foreground">
-          Frontend preview only. This PIN is not production security; no real accounts or money are
-          managed here.
-        </p>
-        {!unlocked && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (pin !== "5050") {
-                setError("Incorrect preview PIN");
-                return;
-              }
-              try {
-                sessionStorage.setItem("polka-ops-unlocked", "1");
-              } catch {}
-              setUnlocked(true);
-              setError("");
-            }}
-          >
-            <label className="text-xs text-muted-foreground">
-              Preview PIN: 5050
-              <Input
-                aria-label="Operator PIN"
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-              />
-            </label>
-            {error && (
-              <p role="alert" className="my-2 text-sm text-down">
-                {error}
-              </p>
-            )}
-            <Button className="mt-4 w-full">Unlock preview</Button>
-          </form>
-        )}
-        {unlocked && !user && <Button onClick={() => openAuth()}>Sign in to preview</Button>}
-      </div>
-    );
+    let active = true;
+    const checkAccess = async () => {
+      setAccessChecked(false);
+      setRole(null);
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) {
+          if (active) setAccessChecked(true);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", authData.user.id);
+        if (!active) return;
+        if (error) {
+          toast.error("Could not verify operator access. Please try again.");
+        } else if (data?.length) {
+          const roles = data.map((row) => row.role);
+          setRole(roles.includes("super_admin") ? "super_admin" : roles.includes("finance") ? "finance" : "operator");
+        }
+        setAccessChecked(true);
+      } catch {
+        if (!active) return;
+        toast.error("Could not verify operator access. Please try again.");
+        setAccessChecked(true);
+      }
+    };
+    void checkAccess();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      if (active) window.setTimeout(() => { if (active) void checkAccess(); }, 0);
+    });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (!accessChecked)
+    return <div className="mx-auto max-w-sm px-5 py-20 text-sm text-muted-foreground">Verifying operator access…</div>;
   if (!role)
     return (
-      <div className="mx-auto max-w-lg px-5 py-16">
-        <h1 className="text-2xl font-semibold">Choose a preview role</h1>
+      <div className="mx-auto max-w-sm px-5 py-20">
+        <h1 className="text-2xl font-semibold">Operator access</h1>
         <p className="my-4 text-sm text-muted-foreground">
-          Roles are session labels, not server-enforced permissions.
+          A signed-in account with an assigned Polka staff role is required to access this workspace.
         </p>
-        <div className="flex flex-wrap gap-3">
-          {roles.map((r) => (
-            <Button key={r.id} onClick={() => setAdmin({ role: r.id })}>
-              {r.label}
-            </Button>
-          ))}
-        </div>
+        <Button onClick={() => openAuth()}>Sign in</Button>
       </div>
     );
   const nav = (
@@ -188,9 +157,8 @@ function Admin() {
           Admin command center
         </p>
         <p className="mt-3 text-[10px] text-up">
-          ● {role.replace("_", " ").toUpperCase()} · LIVE UI
+          ● {role.replace("_", " ").toUpperCase()}
         </p>
-        <p className="mt-2 text-[10px] text-muted-foreground">SESSION PREVIEW</p>
       </div>
       <nav aria-label="Admin workspaces" className="space-y-2">
         {workspaces.map((w) => (
@@ -210,13 +178,6 @@ function Admin() {
         ))}
       </nav>
       <div className="mt-8 space-y-3 border-t pt-5">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-xs"
-          onClick={() => setAdmin({ role: null })}
-        >
-          Switch role
-        </Button>
         <Button variant="ghost" asChild className="w-full justify-start text-xs">
           <Link to="/">
             <ArrowLeft />
@@ -246,7 +207,7 @@ function Admin() {
             <h1 className="text-lg font-semibold">
               {workspaces.find((w) => w.id === active)?.label}
             </h1>
-            <span className="ml-auto font-mono text-[10px] text-muted-foreground">PREVIEW</span>
+            <span className="ml-auto font-mono text-[10px] text-muted-foreground">STAFF WORKSPACE</span>
           </header>
           <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
             <div className={active === "treasury" ? "" : "hidden"}>

@@ -94,34 +94,43 @@ export type Database = {
       }
       eat_rounds: {
         Row: {
+          closes_at: string | null
           created_at: string
           id: string
+          no_multiplier: number | null
           round_date: string
           settled: boolean | null
           settled_price: number | null
           symbol: string
           target_price: number
           winning_side: string | null
+          yes_multiplier: number | null
         }
         Insert: {
+          closes_at?: string | null
           created_at?: string
           id?: string
+          no_multiplier?: number | null
           round_date: string
           settled?: boolean | null
           settled_price?: number | null
           symbol: string
           target_price: number
           winning_side?: string | null
+          yes_multiplier?: number | null
         }
         Update: {
+          closes_at?: string | null
           created_at?: string
           id?: string
+          no_multiplier?: number | null
           round_date?: string
           settled?: boolean | null
           settled_price?: number | null
           symbol?: string
           target_price?: number
           winning_side?: string | null
+          yes_multiplier?: number | null
         }
         Relationships: []
       }
@@ -213,6 +222,7 @@ export type Database = {
           hot: boolean | null
           id: string
           image: string | null
+          is_public: boolean
           news: Json | null
           oracle: string
           outcomes: Json
@@ -238,6 +248,7 @@ export type Database = {
           hot?: boolean | null
           id: string
           image?: string | null
+          is_public?: boolean
           news?: Json | null
           oracle: string
           outcomes: Json
@@ -263,6 +274,7 @@ export type Database = {
           hot?: boolean | null
           id?: string
           image?: string | null
+          is_public?: boolean
           news?: Json | null
           oracle?: string
           outcomes?: Json
@@ -451,16 +463,19 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          is_public: boolean
           key: string
           updated_at: string
           value: Json
         }
         Insert: {
+          is_public?: boolean
           key: string
           updated_at?: string
           value: Json
         }
         Update: {
+          is_public?: boolean
           key?: string
           updated_at?: string
           value?: Json
