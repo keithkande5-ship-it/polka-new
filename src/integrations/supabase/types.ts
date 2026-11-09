@@ -94,34 +94,43 @@ export type Database = {
       }
       eat_rounds: {
         Row: {
+          closes_at: string | null
           created_at: string
           id: string
+          no_multiplier: number | null
           round_date: string
           settled: boolean | null
           settled_price: number | null
           symbol: string
           target_price: number
           winning_side: string | null
+          yes_multiplier: number | null
         }
         Insert: {
+          closes_at?: string | null
           created_at?: string
           id?: string
+          no_multiplier?: number | null
           round_date: string
           settled?: boolean | null
           settled_price?: number | null
           symbol: string
           target_price: number
           winning_side?: string | null
+          yes_multiplier?: number | null
         }
         Update: {
+          closes_at?: string | null
           created_at?: string
           id?: string
+          no_multiplier?: number | null
           round_date?: string
           settled?: boolean | null
           settled_price?: number | null
           symbol?: string
           target_price?: number
           winning_side?: string | null
+          yes_multiplier?: number | null
         }
         Relationships: []
       }
