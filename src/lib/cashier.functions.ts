@@ -18,12 +18,12 @@ export const startDeposit = createServerFn({ method: "POST" })
     const reference = "PK" + crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase();
     const { data: row, error } = await supabaseAdmin
       .from("cashier_transactions")
-      .insert({ user_id: context.userId, type: "deposit", amount: data.amount, fee: q.fee, net: data.amount, phone, status: "pending", reference })
+      .insert({ user_id: context.userId, type: "deposit", amount: data.amount, fee: q.fee, net: q.net, phone, status: "pending", reference })
       .select("id")
       .single();
     if (error || !row) throw new Error("Could not start deposit");
     try {
-      const tx = await pal.stkPush({ amount: q.total, phone, reference });
+      const tx = await pal.stkPush({ amount: data.amount, phone, reference });
       await supabaseAdmin.from("cashier_transactions").update({ palpluss_id: tx.transactionId, updated_at: new Date().toISOString() }).eq("id", row.id);
     } catch (e) {
       await supabaseAdmin.rpc("finalize_cashier", { p_id: row.id, p_status: "FAILED", p_receipt: null as unknown as string, p_payload: { error: String(e) } });
