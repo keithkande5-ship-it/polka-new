@@ -54,8 +54,18 @@ export function b2cPayout(input: { amount: number; phone: string; reference: str
 }
 
 export type PalTx = { transactionId?: string; status: string; amount: number; accountReference?: string; reference?: string; mpesaReceipt?: string | null; mpesa_receipt?: string | null };
-export function getTransaction(id: string) {
-  return call<PalTx>(`/transactions/${encodeURIComponent(id)}`);
+export async function getTransaction(id: string): Promise<PalTx> {
+  const r = await call<Record<string, unknown>>(`/transactions/${encodeURIComponent(id)}`);
+  const s = (k: string) => (typeof r[k] === "string" ? (r[k] as string) : undefined);
+  const desc = s("result_desc") ?? s("resultDescription") ?? "";
+  const receipt = desc.match(/receipt:?\s*([A-Z0-9]{8,12})/i)?.[1] ?? null;
+  return {
+    transactionId: s("transaction_id") ?? s("transactionId"),
+    status: String(r["status"] ?? "PENDING").toUpperCase(),
+    amount: Number(r["amount"] ?? 0),
+    accountReference: s("external_reference") ?? s("accountReference"),
+    mpesaReceipt: s("mpesaReceipt") ?? receipt ?? (String(r["status"]).toUpperCase() === "SUCCESS" ? s("provider_checkout_id") ?? null : null),
+  };
 }
 
 /** Phone in 2547XXXXXXXX form. */
