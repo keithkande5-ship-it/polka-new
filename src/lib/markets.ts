@@ -454,7 +454,8 @@ export function setBinaryProb(id: string, yes: number, at = Date.now()) {
 }
 
 /** Replace the in-memory event list with public markets from the database. */
-export function replaceMarketsFromDb(rows: Array<Record<string, unknown>>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function replaceMarketsFromDb(rows: Array<any>) {
   const keepEat = markets.filter((m) => m.eat);
   const mapped: Market[] = rows.map((r) => {
     const outcomes = Array.isArray(r.outcomes) ? (r.outcomes as Outcome[]) : [];
