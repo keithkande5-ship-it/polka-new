@@ -30,6 +30,8 @@ import { useStore } from "@/lib/store";
 import { fmtKES, fmtDateTime } from "@/lib/markets";
 import { cashierQuote, normalizePhone } from "@/lib/trading-rules";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { startDeposit, checkCashier } from "@/lib/cashier.functions";
 import { Btn3D } from "./ui";
 import { Avatar, AccountOnboarding } from "./AccountUI";
 import { TradePanel } from "./TradePanel";
@@ -184,22 +186,56 @@ export function Cashier() {
     if (invalid || stage !== "form") return;
     setStage("pending");
     const quoted = q;
-    timer.current = setTimeout(() => {
-      adjustBalance(deposit ? quoted.amount : -quoted.amount);
-      recordCashierTx({
-        kind: deposit ? "deposit" : "withdraw",
-        amount: quoted.amount,
-        at: Date.now(),
-        receipt: `PLK-${Date.now().toString(36).toUpperCase()}`,
-      });
-      pushNotif({
-        kind: "mpesa",
-        title: deposit ? "Preview deposit credited" : "Preview withdrawal completed",
-        body: `${fmtKES(deposit ? quoted.amount : quoted.net)} · No money transferred`,
-      });
-      setStage("done");
-      timer.current = null;
-    }, 1200);
+    const fail = (msg: string) => {
+      toast.error(msg);
+      setStage("form");
+    };
+    if (!deposit) {
+      if (quoted.amount < 20) return fail("Minimum withdrawal is KES 20");
+      void supabase
+        .rpc("request_withdrawal", { p_amount: quoted.amount, p_fee: quoted.fee, p_phone: normalizePhone(phone) ?? phone })
+        .then(({ error }) => {
+          if (error) return fail(error.message || "Withdrawal failed, try again later");
+          adjustBalance(-quoted.amount);
+          recordCashierTx({ kind: "withdraw", amount: quoted.amount, at: Date.now(), receipt: "PENDING" });
+          pushNotif({ kind: "mpesa", title: "Withdrawal requested", body: `${fmtKES(quoted.net)} will be sent to your M-Pesa` });
+          setStage("done");
+        });
+      return;
+    }
+    startDeposit({ data: { amount: quoted.amount, phone } })
+      .then(({ id }) => {
+        toast.info("Check your phone and enter your M-Pesa PIN");
+        let tries = 0;
+        const poll = async () => {
+          tries++;
+          try {
+            const r = await checkCashier({ data: { id } });
+            const s = (r.status ?? "").toLowerCase();
+            if (s === "success" || s === "completed") {
+              adjustBalance(quoted.net);
+              recordCashierTx({ kind: "deposit", amount: quoted.amount, at: Date.now(), receipt: r.receipt ?? "M-PESA" });
+              pushNotif({ kind: "mpesa", title: "Deposit received", body: `${fmtKES(quoted.net)} added to your wallet` });
+              setStage("done");
+              timer.current = null;
+              return;
+            }
+            if (["failed", "cancelled", "expired", "reversed"].includes(s)) {
+              timer.current = null;
+              return fail("M-Pesa payment was not completed");
+            }
+          } catch {
+            /* keep polling */
+          }
+          if (tries >= 40) {
+            timer.current = null;
+            return fail("Still waiting for M-Pesa. Your balance will update once it confirms.");
+          }
+          timer.current = setTimeout(poll, 3000);
+        };
+        timer.current = setTimeout(poll, 4000);
+      })
+      .catch((e: unknown) => fail(e instanceof Error ? e.message : "M-Pesa request failed, try again later"));
   };
   return (
     <Sheet
@@ -217,7 +253,7 @@ export function Cashier() {
             <Smartphone className="h-5 w-5 text-mpesa" />
             M-Pesa Cashier
           </SheetTitle>
-          <SheetDescription>Payment preview · No real STK or B2C transfer</SheetDescription>
+          <SheetDescription>M-Pesa deposits and withdrawals via PalPluss</SheetDescription>
           <p className="num text-sm">Balance {fmtKES(balance, 2)}</p>
         </SheetHeader>
         <div className="space-y-4 p-5">
@@ -333,18 +369,18 @@ export function Cashier() {
                 className="h-12 w-full text-sm"
                 onClick={submit}
               >
-                {deposit ? `Preview STK · ${fmtKES(q.total)}` : `Preview B2C · ${fmtKES(q.net)}`}
+                {deposit ? `Pay with M-Pesa · ${fmtKES(q.total)}` : `Withdraw · ${fmtKES(q.net)}`}
               </Btn3D>
             </>
           ) : stage === "pending" ? (
             <div className="flex flex-col items-center gap-3 py-12">
               <Loader2 className="h-10 w-10 animate-spin text-mpesa" />
-              <p>Processing preview…</p>
+              <p>{deposit ? "Enter your M-Pesa PIN on your phone…" : "Submitting withdrawal…"}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-12">
               <CheckCircle2 className="h-10 w-10 text-up" />
-              <p>Preview completed</p>
+              <p>{deposit ? "Deposit received" : "Withdrawal requested"}</p>
               <p className="num text-sm">Balance {fmtKES(balance, 2)}</p>
               <Btn3D onClick={closeCashier} className="h-10 px-5">
                 Done
