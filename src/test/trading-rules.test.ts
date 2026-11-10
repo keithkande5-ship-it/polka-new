@@ -33,7 +33,7 @@ describe("Cashier fees", () => {
         expect(cashierQuote(amount ?? 0, false)).toMatchObject({
           providerFee: fee,
           handlingFee: 0,
-          net: (amount ?? 0) - (fee ?? 0),
+          net: Math.max(0, (amount ?? 0) - (fee ?? 0)),
         });
     }),
   );
