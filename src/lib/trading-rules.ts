@@ -41,9 +41,10 @@ export const WITHDRAWAL_TIERS = [
 ] as const;
 export function cashierQuote(amount: number, deposit: boolean) {
   const providerFee = deposit ? 3 : (WITHDRAWAL_TIERS.find(([upper]) => amount < upper)?.[1] ?? 70);
-  const handlingFee = deposit ? 2 : 5;
+  // No platform handling markup. Deposits: STK prompt = entered amount, fee deducted from credit.
+  const handlingFee = 0;
   const fee = providerFee + handlingFee;
-  return { amount, providerFee, handlingFee, fee, total: amount + fee, net: amount - fee };
+  return { amount, providerFee, handlingFee, fee, total: deposit ? amount : amount, net: Math.max(0, amount - fee) };
 }
 export function validHandle(handle: string) {
   return /^[a-zA-Z0-9_]{3,16}$/.test(handle.replace(/^@/, ""));

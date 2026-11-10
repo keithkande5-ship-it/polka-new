@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { appendReply, readMarketComments, saveMarketComments, marketCommentsKey } from "@/lib/market-comments";
 import { FLASH_RESULT_DISPLAY_MS, outcomeTone } from "@/lib/market-presentation";
-import { markets, type Comment } from "@/lib/markets";
+import { type Comment, type Market } from "@/lib/markets";
+
+const mk = (id: string, labels: string[]): Market => ({ id, question: id, category: "Test", thumb: { text: "T", tone: "primary" }, volume: 0, endsLabel: "", outcomes: labels.map((l, i) => ({ id: String(i), label: l, prob: 1 / labels.length })), rules: "", oracle: "", news: [], comments: [] });
+const markets = [mk("cbk-rate-dec", ["Yes", "No"]), mk("harambee-uganda", ["Kenya", "Draw", "Uganda"])];
 
 const comment: Comment = { id: "new", user: "keith", text: "Saved take", ago: "now", likes: 0 };
 

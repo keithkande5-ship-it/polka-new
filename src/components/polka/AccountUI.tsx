@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Mail, Smartphone, ArrowRight } from "lucide-react";
@@ -76,7 +78,7 @@ function AuthHeader({ variant }: { variant: "drawer" | "dialog" }) {
 }
 
 function AuthBody() {
-  const { auth, closeAuth, openAuth, previewSignIn } = useStore();
+  const { auth, closeAuth, openAuth } = useStore();
   const [checked, setChecked] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -155,13 +157,28 @@ function AuthBody() {
           (auth.provider === "email" &&
             (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8))
         }
-        onClick={() => {
-          previewSignIn(email.split("@")[0] || "Preview trader", auth.mode === "signup");
+        onClick={async () => {
+          const redirect = window.location.origin;
+          if (auth.provider === "google") {
+            const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirect } });
+            if (error) toast.error(error.message);
+            return;
+          }
+          if (auth.mode === "signup") {
+            let ref: string | undefined;
+            try { ref = localStorage.getItem("polka-referrer") || undefined; } catch { /* storage unavailable */ }
+            const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirect, data: ref ? { referred_by: ref } : {} } });
+            if (error) return void toast.error(error.message);
+            if (!data.session) toast.success("Check your email to confirm your account.");
+          } else {
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) return void toast.error(error.message);
+          }
           setChecked(false);
           setPassword("");
         }}
       >
-        Continue with {auth.provider === "google" ? "Google" : "Email"} · Preview
+        Continue with {auth.provider === "google" ? "Google" : "Email"}
       </Btn3D>
       <Btn3D
         className="h-9 w-full text-xs"

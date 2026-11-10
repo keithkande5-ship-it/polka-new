@@ -15,6 +15,8 @@ import { recordCommission } from "./referrals";
 import { track } from "./analytics";
 import { newProfile, type TraderProfile } from "./profiles";
 import { getAdminState } from "./admin";
+import { supabase } from "@/integrations/supabase/client";
+import { replaceMarketsFromDb } from "./markets";
 export type Position = {
   id: string;
   marketId: string;
@@ -114,6 +116,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cashier, setCashier] = useState<Store["cashier"]>({ open: false, tab: "deposit" });
   const [profileOpen, setProfileOpen] = useState(false);
   const [publicTrader, setPublicTrader] = useState<string | null>(null);
+  const [cashierLog, setCashierLog] = useState<CashierTx[]>([]);
   useEffect(() => {
     if (localStorage.getItem("polka-theme") === "light") setTheme("light");
     if (localStorage.getItem("polka-odds") === "odds") setOdds("odds");
@@ -126,6 +129,74 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       l.media = dark === (theme === "dark") ? "all" : "not all";
     });
   }, [theme]);
+  // Real account: Supabase session -> profile, balance, positions, cashier history.
+  const loadAccount = useCallback(async (uid: string | null) => {
+    if (!uid) {
+      setUser(null);
+      setBalance(0);
+      setPositions([]);
+      stateRef.current = { balance: 0, positions: [] };
+      setCashierLog([]);
+      return;
+    }
+    const [{ data: prof }, { data: pos }, { data: txs }] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
+      supabase.from("positions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(500),
+      supabase.from("cashier_transactions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(50),
+    ]);
+    if (prof) {
+      const base = newProfile(prof.display_name || prof.handle);
+      setUser({ ...base, handle: prof.handle, joinedAt: Date.parse(prof.joined_at), ...(prof.referred_by ? { referredBy: prof.referred_by } : {}) } as TraderProfile);
+      stateRef.current.balance = Number(prof.balance);
+      setBalance(Number(prof.balance));
+      if (!prof.phone) setOnboarding((o) => o ?? "phone");
+    }
+    const mapped: Position[] = (pos ?? []).map((r) => ({
+      id: r.id,
+      marketId: r.market_id,
+      title: r.title,
+      outcome: r.outcome,
+      stake: Number(r.stake),
+      mult: Number(r.mult),
+      status: (r.status as Position["status"]) ?? "open",
+      placed: new Date(r.created_at).toLocaleString(),
+      placedAt: Date.parse(r.created_at),
+      ...(r.settled_at ? { settledAt: Date.parse(r.settled_at) } : {}),
+      ...(r.round != null ? { round: Number(r.round) } : {}),
+      ...(r.asset ? { asset: r.asset } : {}),
+      ...(r.lock_price != null ? { lock: Number(r.lock_price) } : {}),
+      ...(r.entry_price != null ? { entry: Number(r.entry_price) } : {}),
+    }));
+    stateRef.current.positions = mapped;
+    setPositions(mapped);
+    setCashierLog(
+      (txs ?? [])
+        .filter((t) => t.status === "success" || t.status === "SUCCESS" || t.status === "completed")
+        .map((t) => ({ id: t.id, kind: t.type === "deposit" ? "deposit" : "withdraw", amount: Number(t.amount), at: Date.parse(t.created_at), receipt: t.mpesa_receipt ?? t.reference ?? "" })),
+    );
+  }, []);
+  const uidRef = useRef<string | null>(null);
+  useEffect(() => {
+    supabase.from("markets").select("*").order("created_at", { ascending: false }).then(({ data }) => {
+      if (data) replaceMarketsFromDb(data as Array<Record<string, unknown>>);
+    });
+    supabase.auth.getUser().then(({ data }) => {
+      uidRef.current = data.user?.id ?? null;
+      void loadAccount(uidRef.current);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      uidRef.current = session?.user.id ?? null;
+      if (event === "SIGNED_IN") setAuth((a) => ({ ...a, open: false }));
+      void loadAccount(uidRef.current);
+    });
+    // Keep wallet in sync while M-Pesa confirmations land.
+    const t = setInterval(() => uidRef.current && void loadAccount(uidRef.current), 20000);
+    return () => {
+      sub.subscription.unsubscribe();
+      clearInterval(t);
+    };
+  }, [loadAccount]);
   const openAuth = useCallback(
     (mode: "login" | "signup" = "login", provider: "email" | "google" = "email") => {
       setSlip(null);
@@ -185,7 +256,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [adjustBalance, pushNotif],
   );
-  const [cashierLog, setCashierLog] = useState<CashierTx[]>([]);
   const recordCashierTx = useCallback((tx: Omit<CashierTx, "id">) => {
     setCashierLog((log) => [{ ...tx, id: crypto.randomUUID() }, ...log].slice(0, 50));
   }, []);
@@ -221,6 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (signup) setOnboarding("phone");
     },
     logout: () => {
+      void supabase.auth.signOut();
       setUser(null);
       setBalance(0);
       setPositions([]);
@@ -264,6 +335,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       s.positions = [pos, ...s.positions];
       setPositions(s.positions);
       if (p.marketId !== "flash") applyTradeShift(p.marketId, p.outcome, p.stake);
+      // Server is the source of truth: atomic debit + position row. Re-sync either way.
+      void supabase
+        .rpc("place_order", {
+          p_market_id: p.marketId,
+          p_outcome: p.outcome,
+          p_stake: p.stake,
+          p_multiplier: p.mult,
+          p_title: p.title,
+          p_asset: (p.asset ?? null) as string,
+          p_round: (p.round ?? null) as number,
+          p_lock: (p.lock ?? null) as number,
+          p_entry: (p.entry ?? null) as number,
+        })
+        .then(({ error }) => {
+          if (error) toast.error(error.message || "Order failed. Try again shortly.");
+          void loadAccount(uidRef.current);
+        });
       track("click", p.marketId === "flash" ? `Flash ${p.outcome}` : `Buy ${p.outcome}`);
       if (user.referredBy) {
         const { fee, commission } = tradeCommission(p.stake, DEFAULT_RAKE, isZeroFeeActive(user, Date.now()));

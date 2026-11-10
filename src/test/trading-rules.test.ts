@@ -13,8 +13,8 @@ import {
   DEFAULT_RAKE,
 } from "@/lib/trading-rules";
 describe("Cashier fees", () => {
-  it("adds KES 5 to a KES 500 deposit", () =>
-    expect(cashierQuote(500, true)).toMatchObject({ providerFee: 3, handlingFee: 2, total: 505 }));
+  it("prompts exactly KES 500 and credits KES 497 on a KES 500 deposit", () =>
+    expect(cashierQuote(500, true)).toMatchObject({ providerFee: 3, handlingFee: 0, total: 500, net: 497 }));
   const tiers = [
     [1, 49, 11],
     [50, 499, 17],
@@ -32,8 +32,8 @@ describe("Cashier fees", () => {
       for (const amount of [min, max])
         expect(cashierQuote(amount ?? 0, false)).toMatchObject({
           providerFee: fee,
-          handlingFee: 5,
-          net: (amount ?? 0) - (fee ?? 0) - 5,
+          handlingFee: 0,
+          net: Math.max(0, (amount ?? 0) - (fee ?? 0)),
         });
     }),
   );

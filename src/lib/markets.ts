@@ -236,188 +236,8 @@ const politicsNews: News[] = [
   },
 ];
 
-export const markets: Market[] = [
-  {
-    id: "cbk-rate-dec",
-    question: "Will CBK cut the base rate below 9% at the December MPC?",
-    category: "Economy",
-    thumb: { text: "CBK", tone: "primary" },
-    volume: 850_000,
-    endsLabel: "Dec 9",
-    outcomes: yesNo(0.62),
-    rules:
-      "Resolves YES if the Central Bank of Kenya announces a Central Bank Rate strictly below 9.00% following its December 2026 MPC meeting. Resolves NO otherwise.",
-    oracle: "Central Bank of Kenya official MPC press release (centralbank.go.ke)",
-    news: econNews,
-    comments: commonComments("Yes", "No"),
-    hot: { change: 8 },
-  },
-  {
-    id: "harambee-uganda",
-    question: "Harambee Stars vs Uganda Cranes",
-    category: "Sports",
-    thumb: { text: "KEN", tone: "up" },
-    volume: 1_240_000,
-    endsLabel: "Sat 16:00",
-    outcomes: [
-      { id: "home", label: "Kenya", prob: 0.44 },
-      { id: "draw", label: "Draw", prob: 0.28 },
-      { id: "away", label: "Uganda", prob: 0.28 },
-    ],
-    rules:
-      "Resolves on the official 90-minute result including stoppage time. Extra time and penalties are excluded.",
-    oracle: "CAF official match report",
-    news: sportsNews,
-    comments: commonComments("Kenya", "Uganda"),
-    hot: { change: 12 },
-    sport: { league: "International Friendly", home: "Kenya", away: "Uganda" },
-  },
-  {
-    id: "kenya-2027",
-    question: "Who will win the 2027 Kenya presidential election?",
-    category: "Politics",
-    thumb: { text: "KE", tone: "down" },
-    volume: 14_600_000,
-    endsLabel: "Aug 2027",
-    outcomes: [
-      { id: "ruto", label: "William Ruto", prob: 0.41 },
-      { id: "kalonzo", label: "Kalonzo Musyoka", prob: 0.22 },
-      { id: "matiangi", label: "Fred Matiang'i", prob: 0.18 },
-      { id: "maraga", label: "David Maraga", prob: 0.11 },
-      { id: "other", label: "Other", prob: 0.08 },
-    ],
-    rules:
-      "Resolves to the candidate declared President-elect by the IEBC, after any Supreme Court petition is determined.",
-    oracle: "IEBC Form 34C declaration and Supreme Court judgment",
-    news: politicsNews,
-    comments: commonComments("Ruto", "Kalonzo"),
-    hot: { change: 3 },
-  },
-  {
-    id: "kes-usd-130",
-    question: "Will USD/KES close above 130 on Dec 31?",
-    category: "Economy",
-    thumb: { text: "$/KSh", tone: "chart-4" },
-    volume: 420_000,
-    endsLabel: "Dec 31",
-    outcomes: yesNo(0.35),
-    rules: "Resolves YES if the CBK published mean USD/KES rate for Dec 31, 2026 is above 130.00.",
-    oracle: "CBK daily foreign exchange rates",
-    news: econNews,
-    comments: commonComments("Yes", "No"),
-  },
-  {
-    id: "gor-ingwe",
-    question: "Gor Mahia vs AFC Leopards — Mashemeji Derby",
-    category: "Sports",
-    thumb: { text: "K'Ogalo", tone: "up" },
-    volume: 960_000,
-    endsLabel: "Sun 15:00",
-    outcomes: [
-      { id: "home", label: "Gor Mahia", prob: 0.48 },
-      { id: "draw", label: "Draw", prob: 0.27 },
-      { id: "away", label: "AFC Leopards", prob: 0.25 },
-    ],
-    rules: "Resolves on the official FKF Premier League full-time result.",
-    oracle: "FKF Premier League official results",
-    news: sportsNews,
-    comments: commonComments("Gor", "Ingwe"),
-    hot: { change: 21 },
-    sport: { league: "FKF Premier League", home: "Gor Mahia", away: "AFC Leopards", liveMin: 68 },
-  },
-  {
-    id: "scom-25",
-    question: "Will Safaricom (SCOM) hit KES 25 before Dec 31?",
-    category: "Economy",
-    thumb: { text: "SCOM", tone: "up" },
-    volume: 610_000,
-    endsLabel: "Dec 31",
-    outcomes: yesNo(0.29),
-    rules:
-      "Resolves YES if SCOM trades at or above KES 25.00 at any close on the NSE before Dec 31, 2026.",
-    oracle: "Nairobi Securities Exchange daily price list",
-    news: econNews,
-    comments: commonComments("Yes", "No"),
-    hot: { change: 5 },
-  },
-  {
-    id: "ars-che",
-    question: "Arsenal vs Chelsea — Premier League",
-    category: "Sports",
-    thumb: { text: "EPL", tone: "down" },
-    volume: 2_180_000,
-    endsLabel: "Sun 18:30",
-    outcomes: [
-      { id: "home", label: "Arsenal", prob: 0.52 },
-      { id: "draw", label: "Draw", prob: 0.24 },
-      { id: "away", label: "Chelsea", prob: 0.24 },
-    ],
-    rules: "Resolves on the official 90-minute Premier League result.",
-    oracle: "Premier League official match centre",
-    news: sportsNews,
-    comments: commonComments("Arsenal", "Chelsea"),
-    sport: { league: "Premier League", home: "Arsenal", away: "Chelsea" },
-  },
-  {
-    id: "epra-fuel",
-    question: "Will EPRA cut Nairobi super petrol below KES 170 in November?",
-    category: "Economy",
-    thumb: { text: "⛽", tone: "chart-5" },
-    volume: 380_000,
-    endsLabel: "Nov 14",
-    outcomes: yesNo(0.57),
-    state: "closed",
-    rules:
-      "Resolves YES if EPRA's November 2026 pump price review sets Nairobi Super Petrol below KES 170.00 per litre.",
-    oracle: "EPRA monthly pump price notice",
-    news: econNews,
-    comments: commonComments("Yes", "No"),
-    hot: { change: 4 },
-  },
-  {
-    id: "btc-120k",
-    question: "Will Bitcoin close above $120k on Oct 31?",
-    category: "Crypto",
-    thumb: { text: "₿", tone: "primary" },
-    volume: 1_730_000,
-    endsLabel: "Oct 31",
-    outcomes: yesNo(0.47),
-    rules:
-      "Resolves YES if the Binance BTC/USDT 1-minute candle closing at 23:59 UTC on Oct 31 is above 120,000.",
-    oracle: "Binance BTC/USDT spot",
-    news: [
-      {
-        source: "Business Daily",
-        title: "Kenyan crypto volumes surge after VASP Act takes effect",
-        ago: "8h",
-        url: "https://www.businessdailyafrica.com",
-      },
-    ],
-    comments: commonComments("Yes", "No"),
-  },
-  {
-    id: "short-rains",
-    question: "Will the short rains start in Nairobi before Nov 1?",
-    category: "Weather",
-    thumb: { text: "🌧", tone: "chart-4" },
-    volume: 210_000,
-    endsLabel: "Nov 1",
-    outcomes: yesNo(0.68),
-    rules:
-      "Resolves YES if KMD declares onset of the OND short rains season for Nairobi before Nov 1, 2026.",
-    oracle: "Kenya Meteorological Department bulletin",
-    news: [
-      {
-        source: "Nation",
-        title: "KMD forecasts near-normal short rains for central region",
-        ago: "1d",
-        url: "https://nation.africa",
-      },
-    ],
-    comments: commonComments("Yes", "No"),
-    hot: { change: 2 },
-  },
-];
+/** Event markets come only from the database (see loadMarketsFromDb). Starts empty. */
+export const markets: Market[] = [];
 
 // ---- Live odds engine: trades shift probabilities and volume app-wide ----
 type Override = { probs: Record<string, number>; volDelta: number; lc?: LifecyclePatch };
@@ -629,6 +449,40 @@ export function setBinaryProb(id: string, yes: number, at = Date.now()) {
   ov.probs[base.outcomes[1]!.id] = Math.round((1 - p) * 1000) / 1000;
   h.push({ t: at, p });
   if (h.length > 2000) h.shift();
+  version++;
+  listeners.forEach((l) => l());
+}
+
+/** Replace the in-memory event list with public markets from the database. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function replaceMarketsFromDb(rows: Array<any>) {
+  const keepEat = markets.filter((m) => m.eat);
+  const mapped: Market[] = rows.map((r) => {
+    const outcomes = Array.isArray(r.outcomes) ? (r.outcomes as Outcome[]) : [];
+    const thumb = (r.thumb as Market["thumb"] | null) ?? { text: String(r.category ?? "").slice(0, 3).toUpperCase(), tone: "primary" };
+    return {
+      id: String(r.id),
+      question: String(r.title ?? ""),
+      category: String(r.category ?? ""),
+      thumb: r.image ? { ...thumb, img: String(r.image) } : thumb,
+      volume: Number(r.traded ?? 0),
+      endsLabel: String(r.ends ?? ""),
+      outcomes,
+      rules: String(r.rules ?? ""),
+      oracle: String(r.oracle ?? ""),
+      news: Array.isArray(r.news) ? (r.news as News[]) : [],
+      comments: [],
+      ...(r.hot ? { hot: { change: 0 } } : {}),
+      ...(r.closes_at ? { closesAt: Date.parse(String(r.closes_at)) } : {}),
+      featured: Boolean(r.featured),
+      state: (r.state as MarketState) ?? "open",
+      ...(r.winning_outcome ? { finalOutcome: String(r.winning_outcome) } : {}),
+      ...(r.sport ? { sport: r.sport as NonNullable<Market["sport"]> } : {}),
+      flat: Number(r.traded ?? 0) === 0,
+    };
+  });
+  markets.splice(0, markets.length, ...keepEat.filter((e) => !mapped.some((m) => m.id === e.id)), ...mapped);
+  cache.clear();
   version++;
   listeners.forEach((l) => l());
 }
