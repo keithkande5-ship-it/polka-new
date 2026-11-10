@@ -53,7 +53,7 @@ export function b2cPayout(input: { amount: number; phone: string; reference: str
   });
 }
 
-export type PalTx = { transactionId?: string; status: string; amount: number; accountReference?: string; reference?: string; mpesaReceipt?: string | null; mpesa_receipt?: string | null };
+export type PalTx = { transactionId?: string | undefined; status: string; amount: number; accountReference?: string | undefined; reference?: string; mpesaReceipt?: string | null; mpesa_receipt?: string | null };
 export async function getTransaction(id: string): Promise<PalTx> {
   const r = await call<Record<string, unknown>>(`/transactions/${encodeURIComponent(id)}`);
   const s = (k: string) => (typeof r[k] === "string" ? (r[k] as string) : undefined);
