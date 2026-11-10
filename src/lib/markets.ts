@@ -452,3 +452,36 @@ export function setBinaryProb(id: string, yes: number, at = Date.now()) {
   version++;
   listeners.forEach((l) => l());
 }
+
+/** Replace the in-memory event list with public markets from the database. */
+export function replaceMarketsFromDb(rows: Array<Record<string, unknown>>) {
+  const keepEat = markets.filter((m) => m.eat);
+  const mapped: Market[] = rows.map((r) => {
+    const outcomes = Array.isArray(r.outcomes) ? (r.outcomes as Outcome[]) : [];
+    const thumb = (r.thumb as Market["thumb"] | null) ?? { text: String(r.category ?? "").slice(0, 3).toUpperCase(), tone: "primary" };
+    return {
+      id: String(r.id),
+      question: String(r.title ?? ""),
+      category: String(r.category ?? ""),
+      thumb: r.image ? { ...thumb, img: String(r.image) } : thumb,
+      volume: Number(r.traded ?? 0),
+      endsLabel: String(r.ends ?? ""),
+      outcomes,
+      rules: String(r.rules ?? ""),
+      oracle: String(r.oracle ?? ""),
+      news: Array.isArray(r.news) ? (r.news as News[]) : [],
+      comments: [],
+      ...(r.hot ? { hot: { change: 0 } } : {}),
+      ...(r.closes_at ? { closesAt: Date.parse(String(r.closes_at)) } : {}),
+      featured: Boolean(r.featured),
+      state: (r.state as MarketState) ?? "open",
+      ...(r.winning_outcome ? { finalOutcome: String(r.winning_outcome) } : {}),
+      ...(r.sport ? { sport: r.sport as NonNullable<Market["sport"]> } : {}),
+      flat: Number(r.traded ?? 0) === 0,
+    };
+  });
+  markets.splice(0, markets.length, ...keepEat.filter((e) => !mapped.some((m) => m.id === e.id)), ...mapped);
+  cache.clear();
+  version++;
+  listeners.forEach((l) => l());
+}
