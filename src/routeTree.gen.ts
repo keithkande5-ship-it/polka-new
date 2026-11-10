@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as FlashRouteImport } from './routes/flash'
+import { Route as KeRouteImport } from './routes/ke'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -39,6 +40,11 @@ const AdminRoute = AdminRouteImport.update({
 const FlashRoute = FlashRouteImport.update({
   id: '/flash',
   path: '/flash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KeRoute = KeRouteImport.update({
+  id: '/ke',
+  path: '/ke',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpsRoute = OpsRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/flash': typeof FlashRoute
+  '/ke': typeof KeRoute
   '/ops': typeof OpsRoute
   '/portfolio': typeof PortfolioRoute
   '/privacy': typeof PrivacyRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/flash': typeof FlashRoute
+  '/ke': typeof KeRoute
   '/ops': typeof OpsRoute
   '/portfolio': typeof PortfolioRoute
   '/privacy': typeof PrivacyRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/flash': typeof FlashRoute
+  '/ke': typeof KeRoute
   '/ops': typeof OpsRoute
   '/portfolio': typeof PortfolioRoute
   '/privacy': typeof PrivacyRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/flash'
+    | '/ke'
     | '/ops'
     | '/portfolio'
     | '/privacy'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/flash'
+    | '/ke'
     | '/ops'
     | '/portfolio'
     | '/privacy'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/flash'
+    | '/ke'
     | '/ops'
     | '/portfolio'
     | '/privacy'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   FlashRoute: typeof FlashRoute
+  KeRoute: typeof KeRoute
   OpsRoute: typeof OpsRoute
   PortfolioRoute: typeof PortfolioRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/flash'
       fullPath: '/flash'
       preLoaderRoute: typeof FlashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ke': {
+      id: '/ke'
+      path: '/ke'
+      fullPath: '/ke'
+      preLoaderRoute: typeof KeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ops': {
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   FlashRoute: FlashRoute,
+  KeRoute: KeRoute,
   OpsRoute: OpsRoute,
   PortfolioRoute: PortfolioRoute,
   PrivacyRoute: PrivacyRoute,
