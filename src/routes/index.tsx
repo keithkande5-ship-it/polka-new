@@ -16,22 +16,23 @@ export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => typeof search["category"] === "string" ? { category: search["category"] } : {},
   head: () => ({
     meta: [
-      { title: "Polka — Trade Kenya's biggest questions" },
+      { title: "Polka — Kenya's Largest Prediction Market | Bet on Politics, Football & Current Events" },
       {
         name: "description",
         content:
-          "Live prediction markets on Kenyan politics, football, the economy and crypto. Instant M-Pesa deposits.",
+          "Kenya's largest prediction market. Bet on elections, politics, football and current events with instant M-Pesa deposits.",
       },
-      { property: "og:title", content: "Polka — Trade Kenya's biggest questions" },
+      { property: "og:title", content: "Polka — Kenya's Largest Prediction Market | Bet on Politics, Football & Current Events" },
       {
         property: "og:description",
-        content: "Live prediction markets with instant M-Pesa deposits and event contract returns.",
+        content: "Kenya's largest prediction market. Bet on elections, politics, football and current events with instant M-Pesa deposits.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:url", content: "https://polka4.lovable.app/" },
+      { name: "keywords", content: "Kenya prediction market, bet on elections Kenya, Kenya politics betting, football predictions Kenya, M-Pesa betting, Polka" },
+      { property: "og:url", content: "https://polka.co.ke/" },
     ],
-    links: [{ rel: "canonical", href: "https://polka4.lovable.app/" }],
+    links: [{ rel: "canonical", href: "https://polka.co.ke/" }],
   }),
   component: Home,
 });
@@ -114,16 +115,10 @@ function Home() {
             const now = Date.now();
             const volOrder = [...markets].sort((a, b) => b.volume - a.volume).map((m) => m.id);
             return [...list]
-              .sort((a, b) => rankScore(b, now) - rankScore(a, now))
+              .sort((a, b) => (Number((b as any).createdAt ? new Date((b as any).createdAt) : 0) - Number((a as any).createdAt ? new Date((a as any).createdAt) : 0)) || rankScore(b, now) - rankScore(a, now))
               .map((m) => <MarketRow key={m.id} m={m} volRank={volOrder.indexOf(m.id)} />);
           })()}
         </section>
-        {ready && cat !== "Resolved" && resolved.length > 0 && (
-          <section className="border-y bg-card md:rounded-lg md:border">
-            <h2 className="border-b px-4 py-3 text-sm font-semibold">Recently resolved markets ⚖</h2>
-            {resolved.map((m) => <MarketRow key={m.id} m={m} />)}
-          </section>
-        )}
       </div>
       <aside className="hidden space-y-4 lg:block">
         <div className="sticky top-20 space-y-4">

@@ -39,29 +39,7 @@ let state: State = {
   notice: "",
   news: [],
   resolutions: {},
-  flags: [
-    {
-      id: "f1",
-      user: "@swift_bull",
-      kind: "velocity",
-      detail: "38 trades in 4 min on Flash BTC",
-      frozen: false,
-    },
-    {
-      id: "f2",
-      user: "@kibet_22 ↔ @kibet_23",
-      kind: "collusion",
-      detail: "Opposing stakes on same market, same device",
-      frozen: false,
-    },
-    {
-      id: "f3",
-      user: "@nairobi_alpha",
-      kind: "multi-account",
-      detail: "3 accounts share one M-Pesa number",
-      frozen: false,
-    },
-  ],
+  flags: [],
   alert: null,
   triggers: { won: true, voided: true, withdrawal: true, account: true },
 };

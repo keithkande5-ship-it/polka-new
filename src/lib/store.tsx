@@ -99,7 +99,7 @@ const g = globalThis as { __polkaStoreCtx?: React.Context<Store | null> };
 const Ctx = (g.__polkaStoreCtx ??= createContext<Store | null>(null));
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [oddsMode, setOdds] = useState<"prob" | "odds">("prob");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [user, setUser] = useState<TraderProfile | null>(null);
   const [auth, setAuth] = useState<Store["auth"]>({
     open: false,
@@ -119,7 +119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [publicTrader, setPublicTrader] = useState<string | null>(null);
   const [cashierLog, setCashierLog] = useState<CashierTx[]>([]);
   useEffect(() => {
-    if (localStorage.getItem("polka-theme") === "light") setTheme("light");
+    if (localStorage.getItem("polka-theme") === "dark") setTheme("dark");
     if (localStorage.getItem("polka-odds") === "odds") setOdds("odds");
   }, []);
   useEffect(() => {
