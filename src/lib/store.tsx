@@ -41,6 +41,7 @@ export type CashierTx = {
   amount: number;
   at: number;
   receipt: string;
+  status?: "completed" | "pending" | "failed";
 };
 export type Notif = {
   id: string;
@@ -171,8 +172,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setPositions(mapped);
     setCashierLog(
       (txs ?? [])
-        .filter((t) => t.status === "success" || t.status === "SUCCESS" || t.status === "completed")
-        .map((t) => ({ id: t.id, kind: t.type === "deposit" ? "deposit" : "withdraw", amount: Number(t.amount), at: Date.parse(t.created_at), receipt: t.mpesa_receipt ?? t.reference ?? "" })),
+        .map((t) => {
+          const st = String(t.status ?? "").toLowerCase();
+          const status: CashierTx["status"] = ["success", "completed", "paid", "approved"].includes(st) ? "completed" : ["pending", "processing", "requested", ""].includes(st) ? "pending" : "failed";
+          return { id: t.id, kind: t.type === "deposit" ? "deposit" : "withdraw", amount: Number(t.type === "deposit" ? (t.net ?? t.amount) : t.amount), at: Date.parse(t.created_at), receipt: t.mpesa_receipt ?? t.reference ?? "", status } as CashierTx;
+        }),
     );
   }, []);
   const uidRef = useRef<string | null>(null);

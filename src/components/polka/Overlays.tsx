@@ -154,11 +154,12 @@ export function ProfileDrawer() {
   );
 }
 export function Cashier() {
-  const { cashier, closeCashier, balance, adjustBalance, pushNotif, user, cashierLog, recordCashierTx } =
+  const { cashier, closeCashier, balance, adjustBalance, pushNotif, user, cashierLog, recordCashierTx, positions } =
     useStore();
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState(500);
-  const [stage, setStage] = useState<"form" | "pending" | "done">("form");
+  const [stage, setStage] = useState<"form" | "pending" | "done" | "failed">("form");
+  const [failMsg, setFailMsg] = useState("");
   const [view, setView] = useState<"deposit" | "withdraw" | "history">("deposit");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -188,7 +189,8 @@ export function Cashier() {
     const quoted = q;
     const fail = (msg: string) => {
       toast.error(msg);
-      setStage("form");
+      setFailMsg(msg);
+      setStage("failed");
     };
     if (!deposit) {
       if (quoted.amount < 20) return fail("Minimum withdrawal is KES 20");
@@ -197,7 +199,7 @@ export function Cashier() {
         .then(({ error }) => {
           if (error) return fail(error.message || "Withdrawal failed, try again later");
           adjustBalance(-quoted.amount);
-          recordCashierTx({ kind: "withdraw", amount: quoted.amount, at: Date.now(), receipt: "PENDING" });
+          recordCashierTx({ kind: "withdraw", amount: quoted.amount, at: Date.now(), receipt: "PENDING", status: "pending" });
           pushNotif({ kind: "mpesa", title: "Withdrawal requested", body: `${fmtKES(quoted.net)} will be sent to your M-Pesa` });
           setStage("done");
         });
@@ -214,7 +216,7 @@ export function Cashier() {
             const s = (r.status ?? "").toLowerCase();
             if (s === "success" || s === "completed") {
               adjustBalance(quoted.net);
-              recordCashierTx({ kind: "deposit", amount: quoted.amount, at: Date.now(), receipt: r.receipt ?? "M-PESA" });
+              recordCashierTx({ kind: "deposit", amount: quoted.net, at: Date.now(), receipt: r.receipt ?? "M-PESA", status: "completed" });
               pushNotif({ kind: "mpesa", title: "Deposit received", body: `${fmtKES(quoted.net)} added to your wallet` });
               setStage("done");
               timer.current = null;
@@ -272,7 +274,7 @@ export function Cashier() {
           </div>
           {view === "history" ? (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Preview receipts · session only</p>
+              <p className="text-xs font-semibold">M-Pesa history</p>
               {cashierLog.length === 0 && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   No M-Pesa transactions yet.
@@ -303,7 +305,27 @@ export function Cashier() {
                       {tx.kind === "deposit" ? "+" : "−"}
                       {fmtKES(tx.amount)}
                     </p>
-                    <p className="capitalize text-muted-foreground">{tx.kind}</p>
+                    <p className={cn("font-semibold capitalize", tx.status === "completed" ? "text-up" : tx.status === "failed" ? "text-down" : "text-chart-4")}>
+                      {tx.kind} · {tx.status === "completed" ? "Completed" : tx.status === "failed" ? "Unsuccessful" : "Pending"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <p className="pt-3 text-xs font-semibold">Stake history</p>
+              {positions.length === 0 && (
+                <p className="py-4 text-center text-sm text-muted-foreground">No stakes yet.</p>
+              )}
+              {positions.slice(0, 50).map((p) => (
+                <div key={p.id} className="flex items-center gap-3 rounded-lg bg-muted p-3 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{p.title}</p>
+                    <p className="text-muted-foreground">{p.outcome} · {p.placed}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="num font-bold">{fmtKES(p.stake)}</p>
+                    <p className={cn("font-semibold", p.status === "won" ? "text-up" : p.status === "lost" ? "text-down" : "text-muted-foreground")}>
+                      {p.status === "won" ? "Successful" : p.status === "lost" ? "Unsuccessful" : p.status === "voided" ? "Refunded" : "Open"}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -376,11 +398,20 @@ export function Cashier() {
             <div className="flex flex-col items-center gap-3 py-12">
               <Loader2 className="h-10 w-10 animate-spin text-mpesa" />
               <p>{deposit ? "Enter your M-Pesa PIN on your phone…" : "Submitting withdrawal…"}</p>
+              {deposit && <p className="text-xs text-muted-foreground">Status: waiting for M-Pesa confirmation</p>}
+            </div>
+          ) : stage === "failed" ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <p className="text-lg font-bold text-down">{deposit ? "Deposit unsuccessful" : "Withdrawal unsuccessful"}</p>
+              <p className="text-sm text-muted-foreground">{failMsg}</p>
+              <Btn3D onClick={() => setStage("form")} className="h-10 px-5" variant="primary">
+                Try again
+              </Btn3D>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-12">
               <CheckCircle2 className="h-10 w-10 text-up" />
-              <p>{deposit ? "Deposit received" : "Withdrawal requested"}</p>
+              <p className="font-bold">{deposit ? `Deposit completed · ${fmtKES(q.net)} credited` : "Withdrawal requested · pending approval"}</p>
               <p className="num text-sm">Balance {fmtKES(balance, 2)}</p>
               <Btn3D onClick={closeCashier} className="h-10 px-5">
                 Done
