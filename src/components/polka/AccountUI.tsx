@@ -265,7 +265,8 @@ export function AccountOnboarding() {
                   const n = normalizePhone(phone);
                   if (!n) return;
                   updateProfile({ phone: n });
-                  setOnboarding("deposit");
+                  setOnboarding(null);
+                  toast.success("M-Pesa number saved.");
                 }}
               >
                 Link number

@@ -150,7 +150,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setUser({ ...base, handle: prof.handle, joinedAt: Date.parse(prof.joined_at), ...(prof.referred_by ? { referredBy: prof.referred_by } : {}) } as TraderProfile);
       stateRef.current.balance = Number(prof.balance);
       setBalance(Number(prof.balance));
-      if (!prof.phone) setOnboarding((o) => o ?? "phone");
     }
     const mapped: Position[] = (pos ?? []).map((r) => ({
       id: r.id,
