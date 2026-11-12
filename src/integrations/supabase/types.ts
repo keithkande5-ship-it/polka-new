@@ -403,6 +403,7 @@ export type Database = {
           phone: string | null
           prefs: Json
           referred_by: string | null
+          updated_at: string
         }
         Insert: {
           avatar?: number | null
@@ -417,6 +418,7 @@ export type Database = {
           phone?: string | null
           prefs?: Json
           referred_by?: string | null
+          updated_at?: string
         }
         Update: {
           avatar?: number | null
@@ -431,6 +433,7 @@ export type Database = {
           phone?: string | null
           prefs?: Json
           referred_by?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
