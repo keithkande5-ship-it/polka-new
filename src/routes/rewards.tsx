@@ -42,33 +42,24 @@ const HOLD_MS = 24 * 60 * 60 * 1000;
 function Rewards() {
   const { user, openAuth, balance, adjustBalance } = useStore();
   const now = useNowTick(30_000);
-  const [claimAt, setClaimAt] = useState<number | null>(null);
-  const storageKey = rewardsStorageKey(user?.id);
-  useEffect(() => {
-    // Re-read whenever the account changes so claim timers never leak across users.
-    const v = localStorage.getItem(storageKey);
-    let at: number | null = null;
-    try {
-      const parsed = v ? (JSON.parse(v) as { claimAt?: number | null }) : null;
-      at = typeof parsed?.claimAt === "number" ? parsed.claimAt : null;
-    } catch {
-      at = null;
-    }
-    setClaimAt(at);
-  }, [storageKey]);
-  const saveClaim = (at: number | null) => {
-    setClaimAt(at);
-    if (at === null) localStorage.removeItem(storageKey);
-    else localStorage.setItem(storageKey, JSON.stringify({ claimAt: at }));
-  };
-  const holding = claimAt !== null && now - claimAt < HOLD_MS;
-  const readyToRelease = claimAt !== null && !holding;
+  const allClaims = useBonusClaims();
+  const userClaim = useMemo(() => getUserBonusClaim(user?.id), [user?.id, allClaims]);
   const link = referralLink(user?.handle);
 
   const ledger = useCommissions(user?.handle);
   const earned = ledger.reduce((a, c) => a + c.amount, 0);
   const friends = new Set(ledger.map((c) => c.friend)).size;
+  const eligible = friends >= 5;
   const zeroLeft = zeroFeeRemainingMs(user, now);
+
+  // When admin approves, credit wallet once and mark credited
+  useEffect(() => {
+    if (userClaim && userClaim.status === "approved" && !userClaim.credited) {
+      adjustBalance(500);
+      markClaimCredited(userClaim.id);
+      toast.success("Admin approved! KES 500 referral bonus credited to your wallet.");
+    }
+  }, [userClaim, adjustBalance]);
 
   // Cumulative earnings over time: starts at zero at sign-up and runs to now.
   const earnings = useMemo(() => {
@@ -84,28 +75,39 @@ function Rewards() {
   }, [ledger, user?.joinedAt, now]);
 
   const stats: [string, string, string][] = [
-    ["Friends trading", String(friends), "text-rewards"],
+    ["Friends trading", `${friends}/5`, "text-rewards"],
     ["Referral earnings", fmtKES(earned, 2), "text-up"],
-    ["Claimable bonus", fmtKES(500), "text-rewards"],
+    ["Bonus reward", fmtKES(500), "text-rewards"],
     [
-      "Pending verification",
-      holding ? fmtResolveEta((claimAt ?? 0) + HOLD_MS - now) : "—",
-      "text-chart-4",
+      "Bonus status",
+      userClaim
+        ? userClaim.status === "approved"
+          ? "Approved ✓"
+          : userClaim.status === "rejected"
+          ? "Rejected"
+          : "Pending Admin"
+        : eligible
+        ? "Ready to Claim"
+        : `${Math.max(0, 5 - friends)} more needed`,
+      userClaim?.status === "approved" ? "text-up" : userClaim?.status === "pending" ? "text-chart-4" : "text-muted-foreground",
     ],
   ];
 
-  const startClaim = () => {
+  const handleClaim = () => {
     if (!user) return openAuth();
-    const t = Date.now();
-    saveClaim(t);
-    toast("Claim submitted · 24-hour verification hold started");
+    if (friends < 5) {
+      return toast.error("Invite at least 5 friends who trade to unlock this bonus.");
+    }
+    const ok = submitBonusClaim({
+      userId: user.id,
+      userHandle: user.handle,
+      friendsCount: friends,
+    });
+    if (ok) {
+      toast("Claim submitted · Awaiting Admin review in Command Center");
+    }
   };
 
-  const release = () => {
-    adjustBalance(500);
-    saveClaim(null);
-    toast.success(fmtKES(500) + " bonus credited to your wallet");
-  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-3 pt-4 md:px-6 md:pt-6">
