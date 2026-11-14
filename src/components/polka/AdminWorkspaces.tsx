@@ -8,7 +8,8 @@ import { useStore } from "@/lib/store";
 import { fmtDateTime, fmtKES, markets } from "@/lib/markets";
 import { clearAnalytics, rank, useAnalytics } from "@/lib/analytics";
 import { ISSUE_CATEGORIES, setIssueStatus, useIssues, type IssueStatus } from "@/lib/issues";
-import { useCommissions } from "@/lib/referrals";
+import { reviewBonusClaim, useBonusClaims, useCommissions } from "@/lib/referrals";
+
 import { zeroFeeRemainingMs } from "@/lib/trading-rules";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
