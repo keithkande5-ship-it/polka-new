@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { assets, useLivePrice } from "@/lib/crypto";
 import type { Market } from "@/lib/markets";
 import { EAT_ASSETS, closeDueEatRounds, ensureEatRounds, repriceEatRounds, lastPrice, reportPrice, useEatRounds } from "@/lib/eat-markets";
@@ -117,8 +118,13 @@ export function EatRounds({ sym }: { sym: string }) {
       {open && (
         <div className="mt-3 divide-y text-xs">
           {rounds.length === 0 && <p className="py-2 text-muted-foreground">No rounds have closed yet. Rounds close at 12:00, 18:00 and 23:59 EAT.</p>}
-          {rounds.map((r) => (
-            <div key={r.close} className="flex items-center justify-between gap-3 py-2">
+                   {rounds.map((r) => (
+            <Link
+              key={r.close}
+              to="/market/$id"
+              params={{ id: `eat-${r.sym.toLowerCase()}-${r.close}` }}
+              className="flex items-center justify-between gap-3 py-2 hover:bg-muted/40 rounded px-1 transition-colors"
+            >
               <span>
                 {new Date(r.close).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
               </span>
@@ -127,14 +133,15 @@ export function EatRounds({ sym }: { sym: string }) {
               </span>
               <span
                 className={cn(
-                  "rounded px-2 py-0.5 font-bold",
+                  "rounded px-2 py-0.5 font-bold text-[10px]",
                   r.outcome === "Yes" ? "bg-up/15 text-up" : r.outcome === "No" ? "bg-down/15 text-down" : "bg-muted text-muted-foreground",
                 )}
               >
-                {r.outcome ? r.outcome.toUpperCase() : "REVIEW"}
+                {r.outcome ? r.outcome.toUpperCase() : "REVIEW"} →
               </span>
-            </div>
+            </Link>
           ))}
+
         </div>
       )}
     </section>
