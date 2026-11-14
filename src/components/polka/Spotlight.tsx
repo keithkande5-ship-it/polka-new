@@ -220,6 +220,8 @@ function TrendCard({ m: base, hero }: { m: Market; hero?: boolean }) {
 
 /** Featured stage: snap carousel on mobile, Polymarket-style hero stage on desktop. */
 export function Spotlight() {
+  const vault = useVault();
+  const housePaused = vault.balance < VAULT_RESERVE_FLOOR;
   const version = useMarketsVersion();
   const hot = useMemo(() => markets.filter((m) => m.featured ?? !!m.hot).sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.hot?.change ?? 0) - (a.hot?.change ?? 0)), [version]);
   const sport = hot.find((m) => m.sport) ?? markets.find((m) => m.sport);
@@ -227,9 +229,10 @@ export function Spotlight() {
   const slides = [
     trends[0] && <TrendCard key="t0" m={trends[0]} hero />,
     sport && <SportsCard key="s" m={sport} />,
-    <FlashCard key="f" />,
+    !housePaused && <FlashCard key="f" />,
     ...trends.slice(1).map((m) => <TrendCard key={m.id} m={m} />),
   ].filter(Boolean);
+
 
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
