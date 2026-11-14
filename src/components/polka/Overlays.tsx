@@ -195,7 +195,11 @@ export function Cashier() {
     if (!deposit) {
       if (quoted.amount < 20) return fail("Minimum withdrawal is KES 20");
       void supabase
-        .rpc("request_withdrawal", { p_amount: quoted.amount, p_fee: quoted.fee, p_phone: normalizePhone(phone) ?? phone })
+        .rpc("request_withdrawal", { 
+  p_amount: quoted.amount, 
+  p_fee: quoted.fee, 
+  p_phone: (normalizePhone(phone) ?? phone).replace(/^\+/, "") 
+})
         .then(({ error }) => {
           if (error) return fail(error.message || "Withdrawal failed, try again later");
           adjustBalance(-quoted.amount);
