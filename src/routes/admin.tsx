@@ -427,7 +427,69 @@ function Studio() {
         .slice(0, 48) +
       "-" +
       Date.now().toString(36);
-    addMarket({
+       const marketPayload = {
+      id,
+      title: q.trim(),
+      category: chosen,
+      thumb: {
+        text: sportOn
+          ? `${home.trim()[0] ?? "H"}${away.trim()[0] ?? "A"}`.toUpperCase()
+          : q.trim().slice(0, 2).toUpperCase(),
+        tone: "primary" as const,
+        img: image ?? undefined,
+      },
+      seed,
+      traded: seed,
+      closes_at: new Date(closes).toISOString(),
+      featured,
+      is_public: true,
+      state: "open",
+      resolved: false,
+      ends: new Date(closes).toLocaleDateString("en-KE", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      outcomes: labels.map((l, i) => ({
+        id: `o${i}`,
+        label: l.trim() || `Outcome ${i + 1}`,
+        prob: Math.round((1 / n) * 1000) / 1000,
+        ...(outImgs[i]?.trim() ? { img: outImgs[i]!.trim() } : {}),
+      })),
+      rules: rules.trim(),
+      oracle: source.trim(),
+    };
+
+    void supabase
+      .from("markets")
+      .insert(marketPayload)
+      .then(({ error }) => {
+        if (error) {
+          toast.error("Database error listing market: " + error.message);
+          return;
+        }
+        addMarket({
+          ...marketPayload,
+          question: marketPayload.title,
+          volume: seed,
+          endsLabel: marketPayload.ends,
+          closesAt: Date.parse(closes),
+          news: [],
+          comments: [],
+        });
+        toast.success("Market listed live on database across all devices!");
+      });
+
+    setQ("");
+    setLabels(["Yes", "No"]);
+    setSportOn(false);
+    setLeague("");
+    setHome("");
+    setAway("");
+    setHomeCrest(null);
+    setAwayCrest(null);
+    return undefined;
+
       id,
       question: q.trim(),
       category: chosen,
