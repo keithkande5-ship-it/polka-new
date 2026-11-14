@@ -5,8 +5,16 @@ import { toast } from "sonner";
 import { fmtAxisKES, fmtDateTime, fmtKES, fmtResolveEta, niceDomain, useNowTick } from "@/lib/markets";
 import { useStore } from "@/lib/store";
 import { referralLink } from "@/lib/site";
-import { rewardsStorageKey, zeroFeeRemainingMs } from "@/lib/trading-rules";
-import { maskHandle, useCommissions } from "@/lib/referrals";
+import { zeroFeeRemainingMs } from "@/lib/trading-rules";
+import {
+  getUserBonusClaim,
+  markClaimCredited,
+  maskHandle,
+  submitBonusClaim,
+  useBonusClaims,
+  useCommissions,
+} from "@/lib/referrals";
+
 import { StepChart } from "@/components/polka/StepChart";
 import { Btn3D } from "@/components/polka/ui";
 import { cn } from "@/lib/utils";
