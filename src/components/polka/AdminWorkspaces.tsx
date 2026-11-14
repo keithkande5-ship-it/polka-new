@@ -31,74 +31,8 @@ type DirUser = {
 };
 
 const DAY = 86_400_000;
-const seedUsers = (): DirUser[] => {
-  const now = Date.now();
-  return [
-    {
-      handle: "nairobi_alpha",
-      phone: "0712***481",
-      joined: now - 40 * DAY,
-      volume: 182_400,
-      balance: 12_300,
-      frozen: false,
-      device: "Android",
-      region: "Kenya",
-    },
-    {
-      handle: "kibet_22",
-      phone: "0722***019",
-      joined: now - 12 * DAY,
-      volume: 54_100,
-      balance: 2_150,
-      referredBy: "nairobi_alpha",
-      frozen: false,
-      device: "Android",
-      region: "Kenya",
-    },
-    {
-      handle: "swift_bull",
-      phone: "0110***774",
-      joined: now - 3 * DAY,
-      volume: 96_000,
-      balance: 8_900,
-      frozen: false,
-      device: "iOS",
-      region: "Kenya",
-    },
-    {
-      handle: "wanjiru_m",
-      phone: "0798***230",
-      joined: now - 6 * 3_600_000,
-      volume: 1_200,
-      balance: 450,
-      referredBy: "kibet_22",
-      frozen: false,
-      device: "Android",
-      region: "Kenya",
-    },
-    {
-      handle: "otieno_ldn",
-      phone: "+44 7***112",
-      joined: now - 70 * DAY,
-      volume: 240_800,
-      balance: 31_000,
-      frozen: false,
-      device: "Desktop",
-      region: "Diaspora",
-    },
-    {
-      handle: "achieng_dxb",
-      phone: "+971 5***880",
-      joined: now - 9 * DAY,
-      volume: 18_300,
-      balance: 1_020,
-      referredBy: "otieno_ldn",
-      frozen: false,
-      device: "iOS",
-      region: "Diaspora",
-    },
-  ];
-};
+const seedUsers = (): DirUser[] => [];
+
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string | undefined }) {
   return (
