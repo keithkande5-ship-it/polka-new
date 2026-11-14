@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Flame, TrendingUp, Zap } from "lucide-react";
 import { fmtCompact, genHistory, hashId, markets, useMarket, useMarketsVersion, type Market } from "@/lib/markets";
 import { assets, fmtPrice, useLivePrice, useRound } from "@/lib/crypto";
-import { flashMultipliers } from "@/lib/trading-rules";
+import { flashMultipliers, useVault, VAULT_RESERVE_FLOOR } from "@/lib/trading-rules";
+
 import { CoinIcon } from "@/components/polka/CoinIcon";
 import { Crest, Thumb } from "@/components/polka/ui";
 import { cn } from "@/lib/utils";
