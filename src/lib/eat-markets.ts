@@ -12,8 +12,19 @@ export const EAT_SEED = 20_000;
 export type EatRound = { sym: string; close: number; target: number; settle: number | null; outcome: "Yes" | "No" | null };
 
 const prices: Record<string, { p: number; at: number }> = {};
-let rounds: EatRound[] = [];
+const EAT_ROUNDS_KEY = "polka_eat_rounds_history";
+
+function loadSavedRounds(): EatRound[] {
+  try {
+    return JSON.parse(localStorage.getItem(EAT_ROUNDS_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+let rounds: EatRound[] = typeof window !== "undefined" ? loadSavedRounds() : [];
 let autoOn = true;
+
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
@@ -98,7 +109,11 @@ export function closeDueEatRounds(now = Date.now()) {
       rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot.p, outcome }, ...rounds].slice(0, 60);
     } else {
       setMarketLifecycle(m.id, { state: "closed" });
-      rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: null, outcome: null }, ...rounds].slice(0, 60);
+           rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot.p, outcome }, ...rounds].slice(0, 60);
+      try {
+        localStorage.setItem(EAT_ROUNDS_KEY, JSON.stringify(rounds));
+      } catch {}
+
     }
     changed = true;
   }
