@@ -83,7 +83,9 @@ function csv(name: string, rows: (string | number)[][]) {
 export function UsersWorkspace() {
   const { user, balance, positions, pushNotif } = useStore();
   const { flags, triggers } = useAdmin();
+  const bonusClaims = useBonusClaims();
   const [users, setUsers] = useState<DirUser[]>(seedUsers);
+
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "frozen" | "referred" | "new">("all");
   const [open, setOpen] = useState<string | null>(null);
@@ -149,6 +151,71 @@ export function UsersWorkspace() {
           ))}
         </div>
       </div>
+            {/* Referral Bonus Claims Approval Queue */}
+      <div className={card}>
+        <div className="flex items-center justify-between border-b pb-2">
+          <div>
+            <p className="text-sm font-semibold">Referral Bonus Claims (KES 500)</p>
+            <p className="text-xs text-muted-foreground">
+              Requires 5 active trading friends. Must be manually approved before wallet credit.
+            </p>
+          </div>
+          <span className="rounded-full bg-rewards/15 px-2.5 py-0.5 text-xs font-bold text-rewards">
+            {bonusClaims.filter((c) => c.status === "pending").length} Pending
+          </span>
+        </div>
+
+        {bonusClaims.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            No referral bonus claims submitted yet.
+          </p>
+        ) : (
+          <div className="mt-3 divide-y text-xs">
+            {bonusClaims.map((c) => (
+              <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <div>
+                  <span className="font-semibold text-foreground">@{c.userHandle}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    ({c.friendsCount}/5 friends traded) · Submitted {new Date(c.submittedAt).toLocaleTimeString()}
+                  </span>
+                </div>
+                {c.status !== "pending" ? (
+                  <span
+                    className={cn(
+                      "rounded px-2 py-0.5 font-bold uppercase",
+                      c.status === "approved" ? "bg-up/15 text-up" : "bg-down/15 text-down"
+                    )}
+                  >
+                    {c.status}
+                  </span>
+                ) : (
+                  <div className="flex gap-2">
+                    <Btn3D
+                      className="h-7 bg-up px-3 text-xs text-white"
+                      onClick={() => {
+                        reviewBonusClaim(c.id, "approved", user?.handle ?? "admin");
+                        toast.success(`Approved @${c.userHandle} bonus claim`);
+                      }}
+                    >
+                      Approve KES 500
+                    </Btn3D>
+                    <Btn3D
+                      className="h-7 bg-secondary px-3 text-xs text-muted-foreground"
+                      onClick={() => {
+                        reviewBonusClaim(c.id, "rejected", user?.handle ?? "admin");
+                        toast("Claim rejected");
+                      }}
+                    >
+                      Reject
+                    </Btn3D>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className={card}>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-48 flex-1">
