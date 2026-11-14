@@ -309,8 +309,10 @@ export function eatTarget(spot: number): number {
 }
 
 /** Central vault ledger: seeds debit, Flash house PnL credits. */
+/** Central vault ledger: seeds debit, Flash house PnL credits. */
 export type VaultEntry = { id: string; at: number; kind: "seed" | "flash" | "rake" | "topup"; amount: number; note: string };
-let vault = { balance: 2_500_000, entries: [] as VaultEntry[] };
+let vault = { balance: 0, entries: [] as VaultEntry[] };
+
 const vaultListeners = new Set<() => void>();
 export function getVault() {
   return vault;
