@@ -122,10 +122,20 @@ export function canBuy(
   );
 }
 /** Anti-sniping lock: Flash betting closes this many seconds before settlement. */
+/** Anti-sniping lock: Flash betting closes this many seconds before settlement. */
 export const FLASH_LOCK_WINDOW_SECONDS = 20;
-export function canTradeFlash(remaining: number, active: boolean) {
+/** KES 1,000 circuit breaker: pauses house contracts when vault reserve is below floor. */
+export const VAULT_RESERVE_FLOOR = 1000;
+
+export function isHousePaused(vaultBalance?: number) {
+  return (vaultBalance ?? getVault().balance) < VAULT_RESERVE_FLOOR;
+}
+
+export function canTradeFlash(remaining: number, active: boolean, vaultBalance?: number) {
+  if (vaultBalance !== undefined && vaultBalance < VAULT_RESERVE_FLOOR) return false;
   return remaining > FLASH_LOCK_WINDOW_SECONDS && !active;
 }
+
 /** Default liquidity seed for a regular market, split evenly across outcomes. */
 export const DEFAULT_MARKET_SEED = 200;
 export function seedSplit(seed: number, outcomes: number) {
