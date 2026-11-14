@@ -193,28 +193,51 @@ function Rewards() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-4">
-        <p className="text-sm font-semibold">Claim bonus</p>
+          <section className="rounded-xl border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">Claim KES 500 bonus</p>
+          <span className="rounded-full bg-rewards/15 px-2.5 py-0.5 text-xs font-semibold text-rewards">
+            {friends}/5 friends trading
+          </span>
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Claims pass a 24-hour verification hold before release. Bonuses are credited once verification completes.
+          Invite 5 friends who make a trade to unlock the KES 500 bonus. Once submitted, your claim enters pending status and is credited as soon as an admin approves it in the Admin Command Center.
         </p>
-        {holding ? (
-          <div className="mt-3 flex items-center gap-3 rounded-lg bg-chart-4/10 p-3 text-sm">
-            <Hourglass className="h-4 w-4 text-chart-4" />
-            <span className="num">
-              Verifying · funds release in {fmtResolveEta((claimAt ?? 0) + HOLD_MS - now)}
+
+        {userClaim?.status === "pending" ? (
+          <div className="mt-3 flex items-center gap-3 rounded-lg bg-chart-4/10 p-3 text-sm text-chart-4">
+            <Hourglass className="h-4 w-4 shrink-0" />
+            <span>
+              <b>Pending Admin Approval:</b> Your claim for KES 500 was submitted and is pending review by the admin team.
             </span>
           </div>
-        ) : readyToRelease ? (
-          <Btn3D variant="primary" className="mt-3 h-11 w-full" onClick={release}>
-            <PartyPopper className="h-4 w-4" /> Verification complete · release {fmtKES(500)}
+        ) : userClaim?.status === "approved" ? (
+          <div className="mt-3 flex items-center gap-3 rounded-lg bg-up/10 p-3 text-sm text-up">
+            <PartyPopper className="h-4 w-4 shrink-0" />
+            <span>
+              <b>Bonus Approved:</b> KES 500 has been approved and credited to your wallet balance.
+            </span>
+          </div>
+        ) : userClaim?.status === "rejected" ? (
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+            <span><b>Claim Rejected:</b> Trade verification did not pass. Invite active trading friends and try again.</span>
+            {eligible && (
+              <Btn3D className="h-8 px-3 text-xs bg-rewards text-white" onClick={handleClaim}>
+                Re-apply
+              </Btn3D>
+            )}
+          </div>
+        ) : eligible ? (
+          <Btn3D className="mt-3 h-11 w-full bg-rewards text-white [--bevel:color-mix(in_oklab,var(--rewards)_45%,black)]" onClick={handleClaim}>
+            <PartyPopper className="h-4 w-4" /> Submit KES 500 Bonus Claim (5/5 trading friends unlocked)
           </Btn3D>
         ) : (
-          <Btn3D className="mt-3 h-11 w-full bg-rewards text-white [--bevel:color-mix(in_oklab,var(--rewards)_45%,black)]" onClick={startClaim}>
-            Claim {fmtKES(500)} bonus
+          <Btn3D disabled className="mt-3 h-11 w-full opacity-60 cursor-not-allowed">
+            <Lock className="h-4 w-4 mr-2" /> Invite 5 friends who trade to unlock ({friends}/5)
           </Btn3D>
         )}
       </section>
+
 
       <section className="rounded-xl border bg-card p-4">
         <p className="text-sm font-semibold">Your referral link</p>
