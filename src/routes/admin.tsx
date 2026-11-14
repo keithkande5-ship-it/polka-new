@@ -490,56 +490,7 @@ function Studio() {
     setAwayCrest(null);
     return undefined;
 
-      id,
-      question: q.trim(),
-      category: chosen,
-      thumb: {
-        text: sportOn
-          ? `${home.trim()[0] ?? "H"}${away.trim()[0] ?? "A"}`.toUpperCase()
-          : q.trim().slice(0, 2).toUpperCase(),
-        tone: "primary",
-        img: image ?? undefined,
-      },
-      volume: seed,
-      closesAt: Date.parse(closes),
-      featured,
-      endsLabel: new Date(closes).toLocaleDateString("en-KE", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-      outcomes: labels.map((l, i) => ({
-        id: `o${i}`,
-        label: l.trim() || `Outcome ${i + 1}`,
-        prob: Math.round((1 / n) * 1000) / 1000,
-        ...(outImgs[i]?.trim() ? { img: outImgs[i]!.trim() } : {}),
-      })),
-      rules: rules.trim(),
-      oracle: source.trim(),
-      news: [],
-      comments: [],
-      ...(sportOn
-        ? {
-            sport: {
-              league: league.trim(),
-              home: home.trim(),
-              away: away.trim(),
-              homeCrest: homeCrest ?? undefined,
-              awayCrest: awayCrest ?? undefined,
-            },
-          }
-        : {}),
-    });
-    toast.success("Market listed (preview)");
-    setQ("");
-    setLabels(["Yes", "No"]);
-    setSportOn(false);
-    setLeague("");
-    setHome("");
-    setAway("");
-    setHomeCrest(null);
-    setAwayCrest(null);
-    return undefined;
+     
   };
 
   return (
