@@ -17,6 +17,7 @@ import {
   useMarketsVersion,
   useNowTick,
 } from "@/lib/markets";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DEFAULT_EVENT_POT_RAKE_BPS,
   cashierQuote,
@@ -443,11 +444,49 @@ export function MarketOperations() {
 }
 
 export function CashierOperations() {
-  const { cashierLog, user, pushNotif } = useStore();
+  const { user, pushNotif } = useStore();
   const { triggers } = useAdmin();
   const [states, setStates] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
-  const queue = cashierLog.filter((t) => t.kind === "withdraw");
+  const [realTxs, setRealTxs] = useState<Array<{
+    id: string;
+    phone: string;
+    amount: number;
+    fee: number;
+    net: number;
+    status: string;
+    type: string;
+    created_at: string;
+    reference: string;
+  }>>([]);
+
+  useEffect(() => {
+    supabase
+      .from("cashier_transactions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .then(({ data }) => {
+        if (data) {
+          setRealTxs(
+            data.map((t) => ({
+              id: t.id,
+              phone: t.phone,
+              amount: Number(t.amount),
+              fee: Number(t.fee ?? 0),
+              net: Number(t.net ?? t.amount),
+              status: t.status ?? "pending",
+              type: t.type,
+              created_at: t.created_at,
+              reference: t.reference ?? t.mpesa_receipt ?? "",
+            }))
+          );
+        }
+      });
+  }, []);
+
+  const queue = realTxs.filter((t) => t.type === "withdrawal" || t.type === "payout");
+
   const audit = cashierLog.filter((t) =>
     `${user?.handle} ${user?.phone} ${t.receipt}`.toLowerCase().includes(search.toLowerCase()),
   );
