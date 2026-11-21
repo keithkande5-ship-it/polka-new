@@ -74,13 +74,17 @@ export type ReferralBonusClaim = {
 
 const BONUS_CLAIMS_KEY = "polka-referral-bonus-claims";
 const claimListeners = new Set<() => void>();
+const EMPTY_CLAIMS: ReferralBonusClaim[] = [];
+let claimsCache: ReferralBonusClaim[] | null = null;
 
 export function getBonusClaims(): ReferralBonusClaim[] {
+  if (claimsCache) return claimsCache;
   try {
-    return JSON.parse(localStorage.getItem(BONUS_CLAIMS_KEY) ?? "[]") as ReferralBonusClaim[];
+    claimsCache = JSON.parse(localStorage.getItem(BONUS_CLAIMS_KEY) ?? "[]") as ReferralBonusClaim[];
   } catch {
-    return [];
+    claimsCache = [];
   }
+  return claimsCache;
 }
 
 export function useBonusClaims(): ReferralBonusClaim[] {
@@ -90,9 +94,10 @@ export function useBonusClaims(): ReferralBonusClaim[] {
       return () => claimListeners.delete(cb);
     },
     getBonusClaims,
-    () => [],
+    () => EMPTY_CLAIMS,
   );
 }
+
 
 export function getUserBonusClaim(userId?: string | null): ReferralBonusClaim | null {
   if (!userId) return null;
@@ -114,10 +119,11 @@ export function submitBonusClaim(claim: { userId: string; userHandle: string; fr
     status: "pending",
     credited: false,
   };
-  const next = [updated, ...list.filter((c) => c.userId !== claim.userId)];
+    claimsCache = next;
   try {
     localStorage.setItem(BONUS_CLAIMS_KEY, JSON.stringify(next));
-  } catch {
+  } catch {}
+
     /* storage unavailable */
   }
   claimListeners.forEach((l) => l());
