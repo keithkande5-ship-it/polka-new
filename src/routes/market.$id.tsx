@@ -50,18 +50,29 @@ import { Avatar } from "@/components/polka/AccountUI";
 import { useConnectionStatus } from "@/lib/crypto";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { appendReply, readMarketComments, saveMarketComments } from "@/lib/market-comments";
 import { outcomeTone } from "@/lib/market-presentation";
 import { MarketClosed } from "@/components/polka/MarketClosed";
+import { mapDbMarket, upsertMarket } from "@/lib/markets";
 import { Countdown, ResponsiveModal } from "@/components/polka/Countdown";
 
 export const Route = createFileRoute("/market/$id")({
-  loader: ({ params }) => {
-    const m = getMarket(params.id);
+  loader: async ({ params }) => {
+    let m = getMarket(params.id);
+    if (!m) {
+      const { data } = await supabase.from("markets").select("*").eq("id", params.id).maybeSingle();
+      if (data) {
+        const loaded = mapDbMarket(data);
+        upsertMarket(loaded);
+        m = loaded;
+      }
+    }
     if (!m) throw notFound();
     return { id: m.id, question: m.question, category: m.category, yes: Math.round((m.outcomes[0]?.prob ?? 0.5) * 100), lead: m.outcomes[0]?.label ?? "Yes" };
   },
+
   head: ({ loaderData }) => ({
     meta: loaderData
       ? [
