@@ -186,7 +186,7 @@ export function MarketOperations() {
   const rows = markets
     .map((base) => getMarket(base.id) ?? base)
     .filter((x) => x.state !== "settled" && expiryBucket(x.closesAt, now) === filter);
-  const settle = () => {
+    const settle = () => {
     if (!m || m.state === "settled" || !settlementGuard(verified, confirmation) || !outcome) return;
     ledger.forEach((p) =>
       outcome === "VOID" ? voidPosition(p.id) : settlePosition(p.id, p.outcome === outcome),
@@ -203,7 +203,20 @@ export function MarketOperations() {
     }));
     record({ market: mid, rake: preview.rake, payout: preview.payout });
     setGuard(false);
+    void supabase
+      .from("markets")
+      .update({
+        state: "settled",
+        winning_outcome: outcome === "VOID" ? "VOID" : outcome,
+        resolved: true,
+      })
+      .eq("id", mid)
+      .then(({ error }) => {
+        if (error) toast.error("Database settlement error: " + error.message);
+        else toast.success("Market settled live in database across all devices!");
+      });
   };
+
   return (
     <div className="space-y-8">
       <section>
@@ -525,19 +538,28 @@ export function CashierOperations() {
                     <td className={status === "released" ? "text-up" : "text-chart-4"}>{status}</td>
                     <td>
                       <div className="flex gap-2">
-                        <Button
+                                                <Button
                           size="sm"
                           disabled={status === "released"}
                           onClick={() => {
                             setStates((s) => ({ ...s, [t.id]: "released" }));
+                            void supabase
+                              .from("cashier_transactions")
+                              .update({ status: "completed" })
+                              .eq("id", t.id)
+                              .then(({ error }) => {
+                                if (error) toast.error("Database update error: " + error.message);
+                                else toast.success("Payout marked completed in database!");
+                              });
                             if (triggers.withdrawal)
                               pushNotif({
                                 kind: "mpesa",
-                                title: "Withdrawal dispatched (preview)",
+                                title: "Withdrawal dispatched",
                                 body: `${fmtKES(quote.net)} · ${t.receipt}`,
                               });
                           }}
                         >
+
                           Release via M-Pesa (preview)
                         </Button>
                         <Button
@@ -638,16 +660,50 @@ export function BroadcastOperations() {
         <Button variant={tone === "red" ? "destructive" : "outline"} onClick={() => setTone("red")}>
           Red · incident
         </Button>
-        <Button
+               <Button
           disabled={!text.trim()}
-          onClick={() => setAdmin({ alert: { text: text.trim(), tone } })}
+          onClick={() => {
+            const alertData = { text: text.trim(), tone };
+            setAdmin({ alert: alertData });
+            void supabase
+              .from("site_settings")
+              .upsert({
+                key: "site_alert",
+                value: alertData,
+                is_public: true,
+                updated_at: new Date().toISOString(),
+              })
+              .then(({ error }) => {
+                if (error) toast.error("Broadcast failed: " + error.message);
+                else toast.success("Broadcast dispatched globally across all devices!");
+              });
+          }}
         >
           <Radio />
           Dispatch banner
         </Button>
-        <Button variant="outline" onClick={() => setAdmin({ alert: null })}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setAdmin({ alert: null });
+            setText("");
+            void supabase
+              .from("site_settings")
+              .upsert({
+                key: "site_alert",
+                value: null,
+                is_public: true,
+                updated_at: new Date().toISOString(),
+              })
+              .then(({ error }) => {
+                if (error) toast.error("Clear failed: " + error.message);
+                else toast.success("Broadcast banner cleared globally!");
+              });
+          }}
+        >
           Clear banner
         </Button>
+
       </div>
       <div className="border-t pt-5">
         <h2 className="mb-4 font-semibold">Automated notification triggers</h2>
