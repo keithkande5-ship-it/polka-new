@@ -52,7 +52,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { appendReply, readMarketComments, saveMarketComments } from "@/lib/market-comments";
+import { appendReply, fetchLiveComments, insertMarketComment, readMarketComments, saveMarketComments } from "@/lib/market-comments";
 import { outcomeTone } from "@/lib/market-presentation";
 import { MarketClosed } from "@/components/polka/MarketClosed";
 import { mapDbMarket, upsertMarket } from "@/lib/markets";
@@ -261,13 +261,20 @@ function MarketPage() {
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [dispute, setDispute] = useState({ reason: "", proof: "" });
   const [draft, setDraft] = useState("");
-  const [comments, setComments] = useState(m.comments);
+    const [comments, setComments] = useState(m.comments);
   useEffect(() => {
     setComments(readMarketComments(m.id, m.comments));
+    fetchLiveComments(m.id).then((live) => {
+      if (live.length > 0) {
+        setComments(live);
+        saveMarketComments(m.id, live);
+      }
+    });
     setSel(m.outcomes[0]?.id ?? "");
     setView("all");
     setDraft("");
   }, [m.id]);
+
   const updateComments = (next: Comment[]) => {
     setComments(next);
     if (!saveMarketComments(m.id, next)) toast.error("Comments could not be saved on this device.");
@@ -628,29 +635,36 @@ function MarketPage() {
               placeholder="Share your take…"
               className="flex-1 rounded-lg border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
             />
-            <Btn3D
+                       <Btn3D
               variant="primary"
               className="h-10 px-4 text-sm"
               disabled={!draft.trim()}
-              onClick={() => {
+              onClick={async () => {
                 if (!user) return openAuth();
                 const s = myStake[0];
-                updateComments([
-                  {
-                    id: crypto.randomUUID(),
-                    user: user.handle,
-                    text: draft.trim(),
-                    ago: "now",
-                    likes: 0,
-                    stake: s ? { amount: s.stake, side: s.outcome } : undefined,
-                  },
-                  ...comments,
-                ]);
+                const text = draft.trim();
                 setDraft("");
+                const optim: Comment = {
+                  id: crypto.randomUUID(),
+                  user: user.handle,
+                  text,
+                  ago: "just now",
+                  likes: 0,
+                  stake: s ? { amount: s.stake, side: s.outcome } : undefined,
+                };
+                updateComments([optim, ...comments]);
+                await insertMarketComment({
+                  marketId: m.id,
+                  userId: user.id,
+                  userHandle: user.handle,
+                  text,
+                  stake: s ? { amount: s.stake, side: s.outcome } : undefined,
+                });
               }}
             >
               Post
             </Btn3D>
+
           </div>
           <div className="mt-2 divide-y">
             {comments.map((c) => (
