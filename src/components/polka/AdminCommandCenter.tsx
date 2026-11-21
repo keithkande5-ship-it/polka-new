@@ -448,19 +448,8 @@ export function CashierOperations() {
   const { triggers } = useAdmin();
   const [states, setStates] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
-  const [realTxs, setRealTxs] = useState<Array<{
-    id: string;
-    phone: string;
-    amount: number;
-    fee: number;
-    net: number;
-    status: string;
-    type: string;
-    created_at: string;
-    reference: string;
-  }>>([]);
-
-  useEffect(() => {
+   const [realTxs, setRealTxs] = useState<any[]>([]);
+ useEffect(() => {
     supabase
       .from("cashier_transactions")
       .select("*")
