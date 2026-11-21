@@ -4,7 +4,7 @@ import type { Comment } from "./markets";
 export const marketCommentsKey = (id: string) => `polka-market-comments:${id}`;
 
 
-export const marketCommentsKey = (id: string) => `polka-market-comments:${id}`;
+
 
 function isComment(value: unknown): value is Comment {
   if (!value || typeof value !== "object") return false;
