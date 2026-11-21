@@ -42,8 +42,36 @@ const HOLD_MS = 24 * 60 * 60 * 1000;
 function Rewards() {
   const { user, openAuth, balance, adjustBalance } = useStore();
   const now = useNowTick(30_000);
-  const allClaims = useBonusClaims();
-  const userClaim = useMemo(() => getUserBonusClaim(user?.id), [user?.id, allClaims]);
+    const [userClaim, setUserClaim] = useState<{ id: string; status: string; credited: boolean } | null>(null);
+  const [loadingClaim, setLoadingClaim] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    async function loadClaim() {
+      const { data } = await supabase
+        .from("referral_commissions")
+        .select("id, amount, source_trade_id")
+        .eq("referrer_id", user.id)
+        .eq("source_trade_id", "bonus_claim_kes_500")
+        .maybeSingle();
+
+      if (active) {
+        if (data) {
+          // If amount is 0, pending admin review; if 500, approved and credited
+          setUserClaim({
+            id: data.id,
+            status: data.amount > 0 ? "approved" : "pending",
+            credited: data.amount > 0,
+          });
+        }
+        setLoadingClaim(false);
+      }
+    }
+    loadClaim();
+    return () => { active = false; };
+  }, [user?.id]);
+
   const link = referralLink(user?.handle);
 
   const ledger = useCommissions(user?.handle);
@@ -93,20 +121,24 @@ function Rewards() {
     ],
   ];
 
-  const handleClaim = () => {
+   const handleClaim = async () => {
     if (!user) return openAuth();
     if (friends < 5) {
       return toast.error("Invite at least 5 friends who trade to unlock this bonus.");
     }
-    const ok = submitBonusClaim({
-      userId: user.id,
-      userHandle: user.handle,
-      friendsCount: friends,
+    const { error } = await supabase.from("referral_commissions").insert({
+      referrer_id: user.id,
+      amount: 0, // 0 indicates pending admin approval
+      source_trade_id: "bonus_claim_kes_500",
     });
-    if (ok) {
-      toast("Claim submitted · Awaiting Admin review in Command Center");
+    if (error) {
+      toast.error("Could not submit claim: " + error.message);
+      return;
     }
+    setUserClaim({ id: crypto.randomUUID(), status: "pending", credited: false });
+    toast.success("Claim submitted · Awaiting Admin review in Command Center");
   };
+
 
 
   return (
