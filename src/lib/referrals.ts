@@ -120,11 +120,11 @@ export function submitBonusClaim(claim: { userId: string; userHandle: string; fr
     status: "pending",
     credited: false,
   };
-    claimsCache = next;
+  const next = [updated, ...list.filter((c) => c.userId !== claim.userId)];
+  claimsCache = next;
   try {
     localStorage.setItem(BONUS_CLAIMS_KEY, JSON.stringify(next));
-  } catch {}
-
+  } catch {
     /* storage unavailable */
   }
   claimListeners.forEach((l) => l());
@@ -138,6 +138,7 @@ export function reviewBonusClaim(claimId: string, status: "approved" | "rejected
   target.status = status;
   target.reviewedAt = Date.now();
   target.reviewedBy = adminName;
+  claimsCache = list;
   try {
     localStorage.setItem(BONUS_CLAIMS_KEY, JSON.stringify(list));
   } catch {
@@ -152,6 +153,7 @@ export function markClaimCredited(claimId: string): void {
   const target = list.find((c) => c.id === claimId);
   if (!target) return;
   target.credited = true;
+  claimsCache = list;
   try {
     localStorage.setItem(BONUS_CLAIMS_KEY, JSON.stringify(list));
   } catch {
