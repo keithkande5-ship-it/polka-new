@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { News } from "./markets";
-
+import { supabase } from "@/integrations/supabase/client";
 /** Preview-only admin state. Lives in memory for this session; no server enforces roles. */
 export type AdminRole = "operator" | "finance" | "super_admin";
 export type SiteLinks = { whatsapp: string; channel: string; telegram: string; x: string; support: string };
@@ -71,10 +71,25 @@ export function useMarketNews(marketId: string) {
   return s.news.filter((n) => n.marketId === marketId);
 }
 
-/** Load CMS-edited community links from browser storage (call after hydration). */
+/** Load CMS-edited community links and broadcast alert from database across all devices. */
 export function hydrateLinks() {
   try {
     const raw = localStorage.getItem(LINKS_KEY);
     if (raw) setAdmin((s) => ({ links: { ...s.links, ...(JSON.parse(raw) as Partial<SiteLinks>) } }));
   } catch { /* ignore */ }
+  if (typeof window !== "undefined") {
+    void supabase
+      .from("site_settings")
+      .select("key, value")
+      .in("key", ["site_links", "site_alert"])
+      .then(({ data }) => {
+        if (!data) return;
+        const linksRow = data.find((r) => r.key === "site_links");
+        const alertRow = data.find((r) => r.key === "site_alert");
+        setAdmin((s) => ({
+          links: linksRow ? { ...s.links, ...(linksRow.value as Partial<SiteLinks>) } : s.links,
+          alert: alertRow ? (alertRow.value as State["alert"]) : s.alert,
+        }));
+      });
+  }
 }
