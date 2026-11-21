@@ -109,7 +109,7 @@ export function closeDueEatRounds(now = Date.now()) {
       rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot.p, outcome }, ...rounds].slice(0, 60);
     } else {
       setMarketLifecycle(m.id, { state: "closed" });
-      rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot?.p, outcome: null }, ...rounds].slice(0, 60);
+     rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot?.p ?? null, outcome: null }, ...rounds].slice(0, 60);
     }
     try {
       localStorage.setItem(EAT_ROUNDS_KEY, JSON.stringify(rounds));
