@@ -46,14 +46,15 @@ function Rewards() {
     const [userClaim, setUserClaim] = useState<{ id: string; status: string; credited: boolean } | null>(null);
   const [loadingClaim, setLoadingClaim] = useState(true);
 
-  useEffect(() => {
-    if (!user?.id) return;
+    useEffect(() => {
+    const uid = user?.id;
+    if (!uid) return;
     let active = true;
     async function loadClaim() {
       const { data } = await supabase
         .from("referral_commissions")
         .select("id, amount, source_trade_id")
-        .eq("referrer_id", user.id)
+        .eq("referrer_id", uid)
         .eq("source_trade_id", "bonus_claim_kes_500")
         .maybeSingle();
 
