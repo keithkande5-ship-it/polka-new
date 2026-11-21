@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Comment } from "./markets";
-import type { Comment } from "./markets";
+
+export const marketCommentsKey = (id: string) => `polka-market-comments:${id}`;
+
 
 export const marketCommentsKey = (id: string) => `polka-market-comments:${id}`;
 
