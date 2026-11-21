@@ -145,12 +145,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("positions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(500),
       supabase.from("cashier_transactions").select("*").eq("user_id", uid).order("created_at", { ascending: false }).limit(50),
     ]);
-    if (prof) {
+        if (prof) {
       const base = newProfile(prof.display_name || prof.handle);
-      setUser({ ...base, handle: prof.handle, joinedAt: Date.parse(prof.joined_at), ...(prof.referred_by ? { referredBy: prof.referred_by } : {}) } as TraderProfile);
+      setUser({
+        ...base,
+        id: prof.id,
+        handle: prof.handle,
+        displayName: prof.display_name || prof.handle,
+        phone: prof.phone || "",
+        bio: prof.bio || "",
+        joinedAt: Date.parse(prof.joined_at),
+        ...(prof.referred_by ? { referredBy: prof.referred_by } : {}),
+      } as TraderProfile);
       stateRef.current.balance = Number(prof.balance);
       setBalance(Number(prof.balance));
     }
+
     const mapped: Position[] = (pos ?? []).map((r) => ({
       id: r.id,
       marketId: r.market_id,
