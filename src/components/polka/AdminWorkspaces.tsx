@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Download, Pause, Play, Search, Snowflake, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,27 @@ export function UsersWorkspace() {
   const { flags, triggers } = useAdmin();
   const bonusClaims = useBonusClaims();
   const [users, setUsers] = useState<DirUser[]>(seedUsers);
+  useEffect(() => {
+    supabase
+      .from("profiles")
+      .select("id, handle, phone, balance, frozen, joined_at, referred_by")
+      .order("joined_at", { ascending: false })
+      .then(({ data }) => {
+        if (!data) return;
+        const mapped: DirUser[] = data.map((p) => ({
+          handle: p.handle,
+          phone: p.phone ?? "No phone",
+          joined: Date.parse(p.joined_at),
+          volume: 0,
+          balance: Number(p.balance ?? 0),
+          referredBy: p.referred_by ?? undefined,
+          frozen: Boolean(p.frozen),
+          device: "Desktop",
+          region: "Kenya",
+        }));
+        setUsers(mapped);
+      });
+  }, []);
 
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "frozen" | "referred" | "new">("all");
