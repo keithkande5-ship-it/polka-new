@@ -495,29 +495,12 @@ export function upsertMarket(market: Market) {
 export function replaceMarketsFromDb(rows: Array<any>) {
   const keepEat = markets.filter((m) => m.eat);
   const mapped: Market[] = rows.map((r) => mapDbMarket(r));
-
-      id: String(r.id),
-      question: String(r.title ?? ""),
-      category: String(r.category ?? ""),
-      thumb: r.image ? { ...thumb, img: String(r.image) } : thumb,
-      volume: Number(r.traded ?? 0),
-      endsLabel: String(r.ends ?? ""),
-      outcomes,
-      rules: String(r.rules ?? ""),
-      oracle: String(r.oracle ?? ""),
-      news: Array.isArray(r.news) ? (r.news as News[]) : [],
-      comments: [],
-      ...(r.hot ? { hot: { change: 0 } } : {}),
-      ...(r.closes_at ? { closesAt: Date.parse(String(r.closes_at)) } : {}),
-      featured: Boolean(r.featured),
-      state: (r.state as MarketState) ?? "open",
-      ...(r.winning_outcome ? { finalOutcome: String(r.winning_outcome) } : {}),
-      ...(r.sport ? { sport: r.sport as NonNullable<Market["sport"]> } : {}),
-      flat: Number(r.traded ?? 0) === 0,
-    };
-  });
   markets.splice(0, markets.length, ...keepEat.filter((e) => !mapped.some((m) => m.id === e.id)), ...mapped);
   cache.clear();
+  version++;
+  listeners.forEach((l) => l());
+}
+
   version++;
   listeners.forEach((l) => l());
 }
