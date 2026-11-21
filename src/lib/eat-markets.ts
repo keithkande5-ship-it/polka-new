@@ -103,19 +103,19 @@ export function closeDueEatRounds(now = Date.now()) {
     if (!cur || (cur.state ?? "open") !== "open") continue;
     const spot = prices[m.eat.sym];
     const fresh = spot && now - spot.at < 60_000;
-    if (fresh) {
+       if (fresh) {
       const outcome: "Yes" | "No" = spot.p > m.eat.target ? "Yes" : "No";
       setMarketLifecycle(m.id, { state: "proposed", proposed: { outcome, at: now } });
       rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot.p, outcome }, ...rounds].slice(0, 60);
     } else {
       setMarketLifecycle(m.id, { state: "closed" });
-           rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot.p, outcome }, ...rounds].slice(0, 60);
-      try {
-        localStorage.setItem(EAT_ROUNDS_KEY, JSON.stringify(rounds));
-      } catch {}
-
+      rounds = [{ sym: m.eat.sym, close: m.closesAt, target: m.eat.target, settle: spot?.p, outcome: null }, ...rounds].slice(0, 60);
     }
+    try {
+      localStorage.setItem(EAT_ROUNDS_KEY, JSON.stringify(rounds));
+    } catch {}
     changed = true;
+
   }
   if (changed) emit();
 }
