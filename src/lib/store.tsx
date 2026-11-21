@@ -306,7 +306,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setProfileOpen(false);
       setOnboarding(null);
     },
-    updateProfile: (p) => setUser((u) => (u ? { ...u, ...p } : null)),
+        updateProfile: (p) => {
+      setUser((u) => (u ? { ...u, ...p } : null));
+      const uid = uidRef.current;
+      if (uid) {
+        const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (p.phone !== undefined) payload.phone = p.phone;
+        if (p.displayName !== undefined) payload.display_name = p.displayName;
+        if (p.bio !== undefined) payload.bio = p.bio;
+        void supabase.from("profiles").update(payload).eq("id", uid);
+      }
+    },
     onboarding,
     setOnboarding,
     balance,
