@@ -1,5 +1,5 @@
 import { vaultPost, useVault } from "@/lib/trading-rules";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Download, Gavel, Wallet, Radio, RotateCcw, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -444,7 +444,7 @@ export function MarketOperations() {
 }
 
 export function CashierOperations() {
-  const { user, pushNotif } = useStore();
+  const { cashierLog, user, pushNotif } = useStore();
   const { triggers } = useAdmin();
   const [states, setStates] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
@@ -469,7 +469,7 @@ export function CashierOperations() {
       .then(({ data }) => {
         if (data) {
           setRealTxs(
-            data.map((t) => ({
+                       data.map((t) => ({
               id: t.id,
               phone: t.phone,
               amount: Number(t.amount),
@@ -477,9 +477,12 @@ export function CashierOperations() {
               net: Number(t.net ?? t.amount),
               status: t.status ?? "pending",
               type: t.type,
+              at: Date.parse(t.created_at),
+              receipt: t.reference ?? t.mpesa_receipt ?? "",
               created_at: t.created_at,
               reference: t.reference ?? t.mpesa_receipt ?? "",
             }))
+
           );
         }
       });
