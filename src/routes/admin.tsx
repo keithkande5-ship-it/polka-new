@@ -393,10 +393,9 @@ function Studio() {
     if (!Number.isFinite(Date.parse(closes))) return toast.error("Choose a valid close date.");
     if (image && !/^(https?:\/\/|data:image\/)/.test(image))
       return toast.error("Choose an image file or an HTTP image URL.");
-    if (editing) {
-      const existing = getMarket(editing);
-      if (!existing || existing.state === "settled")
-        return toast.error("Settled markets cannot be edited.");
+       if (editing) {
+      const existing = markets.find((m) => m.id === editing);
+      if (!existing) return toast.error("Market no longer exists.");
       addCategory(chosen);
       editMarket(editing, {
         question: q.trim(),
@@ -408,9 +407,23 @@ function Studio() {
         ...(source.trim() ? { oracle: source.trim() } : {}),
         thumb: { ...existing.thumb, img: image ?? undefined },
       });
-      toast.success("Market updated");
+      void supabase.from("markets").update({
+        title: q.trim(),
+        category: chosen,
+        closes_at: closes ? new Date(closes).toISOString() : null,
+        ends: closes ? new Date(closes).toLocaleDateString("en-KE") : existing.endsLabel,
+        featured,
+        rules: rules.trim() || undefined,
+        oracle: source.trim() || undefined,
+        image: image ?? null,
+        thumb: { ...existing.thumb, img: image ?? undefined },
+      }).eq("id", editing).then(({ error }) => {
+        if (error) toast.error("Database error updating market: " + error.message);
+        else toast.success("Market updated live in database across all devices!");
+      });
       return;
     }
+
     if (source.trim().length < 3) return toast.error("Add the verification source (URL or official body).");
     if (rules.trim().length < 20) return toast.error("Write the resolution rules (at least 20 characters).");
     if (sportOn && (!league.trim() || !home.trim() || !away.trim()))
@@ -427,10 +440,11 @@ function Studio() {
         .slice(0, 48) +
       "-" +
       Date.now().toString(36);
-       const marketPayload = {
+     const marketPayload = {
       id,
       title: q.trim(),
       category: chosen,
+      image: image ?? null,
       thumb: {
         text: sportOn
           ? `${home.trim()[0] ?? "H"}${away.trim()[0] ?? "A"}`.toUpperCase()
