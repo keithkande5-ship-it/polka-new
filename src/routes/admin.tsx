@@ -872,8 +872,17 @@ function Site() {
           onClick={() => {
             if (Object.values(draft).some((v) => v && !/^https?:\/\//.test(v)))
               return toast.error("Links must start with https://");
-            setAdmin({ links: draft });
-            toast.success("Community links saved");
+                        setAdmin({ links: draft });
+            void supabase.from("site_settings").upsert({
+              key: "site_links",
+              value: draft,
+              is_public: true,
+              updated_at: new Date().toISOString(),
+            }).then(({ error }) => {
+              if (error) toast.error("Database save failed: " + error.message);
+              else toast.success("Community links saved live for all devices!");
+            });
+
             return undefined;
           }}
         >
