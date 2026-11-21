@@ -314,7 +314,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (p.phone !== undefined) payload.phone = p.phone;
         if (p.displayName !== undefined) payload.display_name = p.displayName;
         if (p.bio !== undefined) payload.bio = p.bio;
-        void supabase.from("profiles").update(payload).eq("id", uid);
+       void supabase.from("profiles").update(payload as any).eq("id", uid);
       }
     },
     onboarding,
