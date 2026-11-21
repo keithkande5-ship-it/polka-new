@@ -120,7 +120,7 @@ function Settings() {
               </div>
             </div>
             {field("Bio", "bio")}
-            <Btn3D
+                       <Btn3D
               variant="primary"
               className="h-11 px-5"
               onClick={() => {
@@ -128,7 +128,8 @@ function Settings() {
                   setError("Handle must be 3–16 letters, numbers or underscores.");
                   return;
                 }
-                toast.success("Profile updated for this visit");
+                updateProfile({ displayName: user.displayName, bio: user.bio, handle: user.handle });
+                toast.success("Profile saved");
               }}
             >
               Save profile
@@ -147,11 +148,12 @@ function Settings() {
                   return;
                 }
                 updateProfile({ phone: p });
-                toast("Number saved for this visit");
+                toast.success("M-Pesa number saved");
               }}
             >
               Save number
             </Btn3D>
+
             <dl className="space-y-4 border-y py-5 text-sm">
               <div className="flex justify-between">
                 <dt>Identity tier</dt>
