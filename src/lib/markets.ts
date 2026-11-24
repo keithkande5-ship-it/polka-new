@@ -491,7 +491,6 @@ export function upsertMarket(market: Market) {
   version++;
   listeners.forEach((l) => l());
 }
-
 export function replaceMarketsFromDb(rows: Array<any>) {
   const keepEat = markets.filter((m) => m.eat);
   const mapped: Market[] = rows.map((r) => mapDbMarket(r));
@@ -501,6 +500,3 @@ export function replaceMarketsFromDb(rows: Array<any>) {
   listeners.forEach((l) => l());
 }
 
-  version++;
-  listeners.forEach((l) => l());
-}
