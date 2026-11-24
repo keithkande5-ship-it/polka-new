@@ -2,7 +2,19 @@ import { vaultPost } from "@/lib/trading-rules";
 import { Tutorial } from "@/components/polka/Tutorial";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, Info, Loader2, Lock, Radio, TrendingDown, TrendingUp } from "lucide-react";
+import {
+  ChevronDown,
+  Info,
+  Loader2,
+  Lock,
+  Radio,
+  TrendingDown,
+  TrendingUp,
+  CheckCircle2,
+  History,
+  Percent,
+  Zap,
+} from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -49,16 +61,15 @@ export const Route = createFileRoute("/flash")({
   },
   head: () => ({
     meta: [
-      { title: "60s Flash — Up or Down crypto rounds | Polka" },
+      { title: "Flash Up or Down — Fast Crypto Rounds | Polka" },
       {
         name: "description",
-        content:
-          "Call BTC, ETH, SOL and more Up or Down in 60-second rounds with live Binance prices.",
+        content: "Call BTC, ETH, SOL and more Up or Down in fast rounds with live Binance prices.",
       },
-      { property: "og:title", content: "60s Flash — Up or Down | Polka" },
+      { property: "og:title", content: "Flash Up or Down | Polka" },
       {
         property: "og:description",
-        content: "60-second Up/Down rounds on live Binance prices. Pay in with M-Pesa.",
+        content: "Fast Up/Down crypto rounds on live Binance prices with instant M-Pesa payouts.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -68,6 +79,8 @@ export const Route = createFileRoute("/flash")({
 });
 
 type ChartMode = "line" | "candle" | "chance";
+type Timeframe = "60s" | "5m" | "10m" | "15m";
+type OddsDisplay = "multiplier" | "percentage";
 
 /** Traditional 5-second OHLC candles spanning the previous and current round. */
 function Candles({
@@ -77,6 +90,7 @@ function Candles({
   now,
   roundStart,
   entries,
+  spanMs,
 }: {
   series: { t: number; p: number }[];
   lock: number | null;
@@ -84,13 +98,16 @@ function Candles({
   now: number;
   roundStart: number;
   entries: { id: string; p: number; up: boolean }[];
+  spanMs: number;
 }) {
-  const N = 24; // 12 candles of the previous round + 12 of the live round
-  const first = Math.floor((roundStart - 60_000) / 5000);
+  const bucketSec = Math.max(5, Math.floor(spanMs / 24000));
+  const bucketMs = bucketSec * 1000;
+  const N = 24;
+  const first = Math.floor((roundStart - spanMs) / bucketMs);
   const buckets = new Map<number, { o: number; h: number; l: number; c: number }>();
   let prevClose: number | null = null;
   for (const { t, p } of series) {
-    const k = Math.floor(t / 5000);
+    const k = Math.floor(t / bucketMs);
     if (k < first) {
       prevClose = p;
       continue;
@@ -104,7 +121,7 @@ function Candles({
     }
     prevClose = p;
   }
-  const liveK = Math.floor(now / 5000);
+  const liveK = Math.floor(now / bucketMs);
   const vals = [...buckets.values()];
   const all = vals.flatMap((v) => [v.h, v.l]).concat(lock ? [lock] : [], entries.map((e) => e.p));
   if (!all.length) return <div className="h-full w-full animate-pulse rounded-lg bg-muted/70" />;
@@ -118,87 +135,52 @@ function Candles({
   const cw = plotW / N;
   const bodyW = Math.max(3, cw * 0.62);
   const xOf = (k: number) => (k - first) * cw + cw / 2;
-  const openX = ((roundStart - (roundStart - 60_000)) / 120_000) * plotW;
+  const openX = ((roundStart - (roundStart - spanMs)) / (spanMs * 2)) * plotW;
   const last = buckets.get(liveK) ?? vals.at(-1);
   const lastColor = last && last.c >= last.o ? "var(--up)" : "var(--down)";
-  const label = (v: number) => fmtPrice(v, decimals);
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="none">
-      {/* horizontal grid + price scale */}
-      {[0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => {
-        const yy = top + f * plotH;
-        return (
-          <g key={f}>
-            <line x1={0} x2={plotW} y1={yy} y2={yy} stroke="var(--border)" strokeWidth={0.6} />
-            <text x={W - 4} y={yy + 3} textAnchor="end" fontSize={10} fill="var(--muted-foreground)" style={{ fontVariantNumeric: "tabular-nums" }}>
-              {label(hi - f * span)}
-            </text>
-          </g>
-        );
-      })}
-      {/* vertical grid every 15s + time labels */}
-      {Array.from({ length: 9 }, (_, i) => {
-        const t = roundStart - 60_000 + i * 15_000;
-        const xx = (i / 8) * plotW;
-        return (
-          <g key={i}>
-            <line x1={xx} x2={xx} y1={top} y2={top + plotH} stroke="var(--border)" strokeWidth={0.4} opacity={0.6} />
-            {i % 2 === 0 && (
-              <text x={Math.min(plotW - 20, Math.max(20, xx))} y={H - 6} textAnchor="middle" fontSize={9} fill="var(--muted-foreground)">
-                {new Date(t).toLocaleTimeString("en-KE", { hour12: false })}
-              </text>
-            )}
-          </g>
-        );
-      })}
-      {/* previous round shading + round open marker */}
-      <rect x={0} y={top} width={openX} height={plotH} fill="var(--muted)" opacity={0.18} />
-      <line x1={openX} x2={openX} y1={top} y2={top + plotH} stroke="var(--primary)" strokeWidth={1} strokeDasharray="3 3" />
-      <text x={openX + 4} y={top + 10} fontSize={9} fill="var(--primary)" fontWeight={600}>ROUND OPEN</text>
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full overflow-visible" preserveAspectRatio="none">
+      <defs>
+        <pattern id="grid" width="60" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 60 0 L 0 0 0 40" fill="none" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="2 4" />
+        </pattern>
+      </defs>
+      <rect width={plotW} height={plotH} y={top} fill="url(#grid)" opacity={0.6} />
+
+      {/* Lock Reference Line */}
       {lock && (
-        <line x1={0} x2={plotW} y1={y(lock)} y2={y(lock)} stroke="var(--primary)" strokeWidth={1.25} strokeDasharray="6 4" />
-      )}
-      {entries.map((e) => (
-        <g key={e.id}>
-          <line x1={openX} x2={plotW} y1={y(e.p)} y2={y(e.p)} stroke={e.up ? "var(--up)" : "var(--down)"} strokeWidth={1.25} />
-          <text x={openX + 4} y={y(e.p) - 3} fontSize={9} fill={e.up ? "var(--up)" : "var(--down)"}>
-            My {e.up ? "UP" : "DOWN"} entry
+        <g>
+          <line x1={0} x2={plotW} y1={y(lock)} y2={y(lock)} stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="4 3" opacity={0.8} />
+          <text x={plotW + 4} y={y(lock) + 3} fill="var(--primary)" fontSize="10" fontFamily="var(--font-mono)">
+            {fmtPrice(lock, decimals)}
           </text>
         </g>
-      ))}
-      {[...buckets.entries()].map(([k, v]) => {
-        if (k - first >= N) return null;
-        const up = v.c >= v.o;
+      )}
+
+      {/* Round Open Line */}
+      <line x1={openX} x2={openX} y1={top} y2={top + plotH} stroke="var(--primary)" strokeWidth="1" strokeDasharray="3 3" opacity={0.6} />
+
+      {/* Candlesticks */}
+      {[...buckets.entries()].map(([k, c]) => {
+        const cx = xOf(k);
+        const up = c.c >= c.o;
         const color = up ? "var(--up)" : "var(--down)";
-        const x = xOf(k);
-        const bodyTop = y(Math.max(v.o, v.c));
-        const bodyH = Math.max(1, Math.abs(y(v.o) - y(v.c)));
-        const forming = k === liveK;
+        const topY = y(Math.max(c.o, c.c));
+        const botY = y(Math.min(c.o, c.c));
+        const h = Math.max(1.5, botY - topY);
         return (
-          <g key={k} opacity={forming ? 1 : 0.95}>
-            <line x1={x} x2={x} y1={y(v.h)} y2={y(v.l)} stroke={color} strokeWidth={1} shapeRendering="crispEdges" />
-            <rect
-              x={x - bodyW / 2}
-              width={bodyW}
-              y={bodyTop}
-              height={bodyH}
-              fill={up ? "var(--up)" : "var(--down)"}
-              stroke={color}
-              strokeWidth={0.8}
-              shapeRendering="crispEdges"
-            />
+          <g key={k}>
+            <line x1={cx} x2={cx} y1={y(c.h)} y2={y(c.l)} stroke={color} strokeWidth="1.2" />
+            <rect x={cx - bodyW / 2} y={topY} width={bodyW} height={h} fill={color} rx="1" />
           </g>
         );
       })}
-      {last && (
-        <>
-          <line x1={0} x2={plotW} y1={y(last.c)} y2={y(last.c)} stroke={lastColor} strokeWidth={0.8} strokeDasharray="2 3" />
-          <rect x={plotW + 2} y={y(last.c) - 8} width={axisW - 4} height={16} rx={3} fill={lastColor} />
-          <text x={W - 6} y={y(last.c) + 3.5} textAnchor="end" fontSize={10} fontWeight={700} fill="var(--background)" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {label(last.c)}
-          </text>
-        </>
-      )}
+
+      {/* Entry Markers */}
+      {entries.map((e) => (
+        <circle key={e.id} cx={plotW - 12} cy={y(e.p)} r="3.5" fill={e.up ? "var(--up)" : "var(--down)"} stroke="var(--background)" strokeWidth="1" />
+      ))}
     </svg>
   );
 }
@@ -223,14 +205,13 @@ function RoundPoll({
       {status.map((s) => {
         const e = entries.find((x) => x.id === s.id);
         const entry = e?.p ?? price;
-        // ±0.05% from entry maps to the full meter width.
         const rel = Math.max(-1, Math.min(1, (s.move / (entry * 0.0005)) * (s.side === "UP" ? 1 : -1)));
         const pos = 50 + rel * 50;
         return (
           <div
             key={s.id}
             className={cn(
-              "rounded-lg border p-3",
+              "rounded-xl border p-3",
               s.winning ? "border-up/40 bg-up/5" : s.tie ? "border-border" : "border-down/40 bg-down/5",
             )}
           >
@@ -240,9 +221,9 @@ function RoundPoll({
               </span>
               <span className="text-muted-foreground">{remaining}s left</span>
             </div>
-            <div className="relative mt-2 h-3 overflow-hidden rounded-full bg-muted">
-              <div className="absolute inset-y-0 left-0 bg-down/50" style={{ width: "50%" }} />
-              <div className="absolute inset-y-0 right-0 bg-up/50" style={{ width: "50%" }} />
+            <div className="relative mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+              <div className="absolute inset-y-0 left-0 bg-down/40" style={{ width: "50%" }} />
+              <div className="absolute inset-y-0 right-0 bg-up/40" style={{ width: "50%" }} />
               <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/60" />
               <div
                 className={cn(
@@ -271,17 +252,16 @@ function RoundPoll({
 
 type Result = { round: number; dir: "up" | "down"; lock: number; settle: number; at: number };
 
-/** Deterministic preview pool per round (volume + trader count). */
 function roundMeta(round: number) {
   const h = hashId(`flash-round-${round}`);
-  return { volume: 40_000 + (h % 60_000), traders: 120 + (h % 400) };
+  return { volume: 45_000 + (h % 55_000), traders: 140 + (h % 380) };
 }
 
 function AssetList({ current, onPick }: { current: Asset; onPick: (a: Asset) => void }) {
   return (
     <div className="divide-y">
       {[
-        ["Crypto · Binance", assets.filter((a) => !a.local)],
+        ["Crypto · Binance Live", assets.filter((a) => !a.local)],
         ["Local pairs", assets.filter((a) => a.local)],
       ].map(([label, list]) => (
         <div key={label as string} className="py-1">
@@ -299,7 +279,7 @@ function AssetList({ current, onPick }: { current: Asset; onPick: (a: Asset) => 
             >
               <CoinIcon symbol={a.sym} />
               <span className="flex-1">
-                <span className="block text-sm font-semibold">{a.sym} 60s Up or Down</span>
+                <span className="block text-sm font-semibold">{a.sym} Up or Down</span>
                 <span className="text-xs text-muted-foreground">{a.name}</span>
               </span>
             </button>
@@ -314,12 +294,19 @@ function Flash() {
   const mobile = useIsMobile();
   const { asset: assetParam } = Route.useSearch();
   const navigate = useNavigate({ from: "/flash" });
+
   const [asset, setAsset] = useState<Asset>(
     () =>
       assets.find((a) => a.sym.toLowerCase() === assetParam?.toLowerCase()) ??
       assets[0] ?? { sym: "BTC", name: "Bitcoin", seed: 108000, decimals: 2 },
   );
+
   const [picker, setPicker] = useState(false);
+  const [timeframe, setTimeframe] = useState<Timeframe>("60s");
+  const [oddsMode, setOddsMode] = useState<OddsDisplay>("multiplier");
+  const [chartMode, setChartMode] = useState<ChartMode>("line");
+  const [stake, setStake] = useState(100);
+
   const { price, live, series, status, ready, retry } = useLivePrice(asset);
   const { round, remaining } = useRound();
   const {
@@ -332,15 +319,19 @@ function Flash() {
     user,
     openAuth,
   } = useStore();
+
   const lock = useRef<{ r: number; p: number } | null>(null);
   const lastPrice = useRef<number | null>(null);
   const statusRef = useRef(status);
   statusRef.current = status;
+
   const [history, setHistory] = useState<Result[]>([]);
-  // AFTER
   const [resolution, setResolution] = useState<FlashResolutionData | null>(null);
   const [lastOutcome, setLastOutcome] = useState<"up" | "down" | null>(null);
   const [isDetermining, setIsDetermining] = useState(false);
+  const [lockP, setLockP] = useState<number | null>(null);
+
+  lastPrice.current = price;
 
   useEffect(() => {
     if (!resolution) return;
@@ -348,6 +339,8 @@ function Flash() {
     const timer = window.setTimeout(() => setResolution(null), FLASH_RESULT_DISPLAY_MS);
     return () => window.clearTimeout(timer);
   }, [resolution]);
+
+  const locked = remaining <= FLASH_LOCK_WINDOW_SECONDS;
 
   // Trigger "Determining winner..." loader in the final seconds of the round
   useEffect(() => {
@@ -357,10 +350,6 @@ function Flash() {
       setIsDetermining(false);
     }
   }, [remaining, locked]);
-  const [lockP, setLockP] = useState<number | null>(null);
-  const [stake, setStake] = useState(100);
-  const [chartMode, setChartMode] = useState<ChartMode>("line");
-  lastPrice.current = price;
 
   useEffect(() => {
     lock.current = null;
@@ -369,7 +358,6 @@ function Flash() {
     setLockP(null);
   }, [asset]);
 
-  // Deep links (?asset=eth) drive the active pair — browser back/forward included.
   useEffect(() => {
     if (!assetParam) return;
     const next = assets.find((a) => a.sym.toLowerCase() === assetParam.toLowerCase());
@@ -388,17 +376,13 @@ function Flash() {
           p.asset === asset.sym &&
           p.status === "open",
       );
-      // Never settle on synthetic or hallucinated numbers: if the feed was not
-      // live through the round, void and refund instead of resolving.
       const healthy = asset.local || statusRef.current === "live";
       if (open.length > 0 && !healthy) {
         open.forEach((p) => voidPosition(p.id));
       } else {
         const settle = lastPrice.current ?? prev.p;
         const dir: Result["dir"] = settle >= prev.p ? "up" : "down";
-        setHistory((h) =>
-          [{ round: prev.r, dir, lock: prev.p, settle, at: Date.now() }, ...h].slice(0, 14),
-        );
+        setHistory((h) => [{ round: prev.r, dir, lock: prev.p, settle, at: Date.now() }, ...h].slice(0, 30));
         let net = 0;
         open.forEach((p) => {
           const won = p.outcome.toLowerCase() === dir;
@@ -406,16 +390,23 @@ function Flash() {
           settlePosition(p.id, won);
         });
         if (open.length) vaultPost("flash", Math.round(-net * 100) / 100, `Flash round #${prev.r} house P&L`);
-        if (healthy) setResolution({
-          round: prev.r, dir, lock: prev.p, settle,
-          stake: open.reduce((total, p) => total + p.stake, 0),
-          returned: open.reduce((total, p) => total + (p.outcome.toLowerCase() === dir ? payout(p.stake, p.mult) : 0), 0),
-          orders: open.length,
-        });
+        if (healthy)
+          setResolution({
+            round: prev.r,
+            dir,
+            lock: prev.p,
+            settle,
+            stake: open.reduce((total, p) => total + p.stake, 0),
+            returned: open.reduce(
+              (total, p) => total + (p.outcome.toLowerCase() === dir ? payout(p.stake, p.mult) : 0),
+              0,
+            ),
+            orders: open.length,
+          });
         if (open.length > 0) {
           if (net > 0) {
             fireConfetti();
-            toast.success(`You made a profit: +${fmtKES(net, 2)}`, {
+            toast.success(`You won: +${fmtKES(net, 2)}`, {
               description: `Round #${prev.r} settled ${dir.toUpperCase()}`,
               duration: 4000,
             });
@@ -430,10 +421,8 @@ function Flash() {
     }
     lock.current = { r: round, p: price };
     setLockP(price);
-  }, [round, price, positions, settlePosition, voidPosition, asset.local, asset.sym]);
+  }, [round, price, asset, positions, settlePosition, voidPosition]);
 
-  // A live stake plus a dead feed is an immediate void — 100% refund, no
-  // synthetic resolution in between.
   useEffect(() => {
     if (status !== "offline") return;
     positions
@@ -441,9 +430,6 @@ function Flash() {
       .forEach((p) => voidPosition(p.id));
   }, [status, positions, voidPosition]);
 
-  // The seeded preview series is centered on a static seed price; when the live
-  // feed connects it reseeds to the real price, leaving the round lock stale.
-  // Re-lock the current round once the live price diverges >2% from the lock.
   useEffect(() => {
     if (!live || !price || round === null || lock.current?.r !== round) return;
     if (Math.abs(price - lock.current.p) / lock.current.p > 0.02) {
@@ -452,14 +438,19 @@ function Flash() {
     }
   }, [live, price, round]);
 
-  const locked = remaining <= FLASH_LOCK_WINDOW_SECONDS;
   const pUp = flashProbability(price, lockP, remaining);
   const lockUp = flashLockout(pUp);
   const lockDown = flashLockout(1 - pUp);
+  const tradeAllowed = canTradeFlash(remaining);
   const rakePct = useRake();
-  const meta = roundMeta(round ?? 0);
-  const bias = upProbability(price, lockP);
-  const upStake = meta.volume * bias;
+
+  const meta = useMemo(() => roundMeta(round ?? 0), [round]);
+  const upStake = meta.volume * biasRatio(pUp);
+  function biasRatio(prob: number) {
+    return Math.max(0.1, Math.min(0.9, prob * 0.8 + 0.1));
+  }
+  const bias = meta.volume > 0 ? upStake / meta.volume : 0.5;
+
   const raw = useMemo(
     () => ({
       up: parimutuelMultiplier(pUp, upStake, meta.volume, rakePct),
@@ -467,10 +458,8 @@ function Flash() {
     }),
     [pUp, upStake, meta.volume, rakePct],
   );
-  // Freeze quoted multipliers when the anti-sniping lock window opens.
-  const [frozenMult, setFrozenMult] = useState<{ r: number; up: number; down: number } | null>(
-    null,
-  );
+
+  const [frozenMult, setFrozenMult] = useState<{ r: number; up: number; down: number } | null>(null);
   useEffect(() => {
     if (round === null) return;
     if (remaining > FLASH_LOCK_WINDOW_SECONDS) {
@@ -479,18 +468,19 @@ function Flash() {
     }
     setFrozenMult((f) => (f?.r === round ? f : { r: round, up: raw.up, down: raw.down }));
   }, [remaining, round, raw.up, raw.down, frozenMult]);
+
   const estMult = locked && frozenMult?.r === round ? frozenMult : raw;
   const multUp = estMult.up;
   const multDown = estMult.down;
   const evenMult = parimutuelMultiplier(0.5, 1, 2, rakePct);
   const diff = price && lockP ? price - lockP : 0;
+
   const myOrders = positions.filter(
     (p) => p.marketId === "flash" && p.round === round && p.status === "open",
   );
-  const tradeAllowed = canTradeFlash(remaining, myOrders.length > 0) && !locked;
 
   const pick = (a: Asset) => {
-    if (myOrders.some((p) => p.status === "open")) {
+    if (myOrders.length > 0) {
       toast("Wait for your active round to settle before switching assets.");
       return;
     }
@@ -518,8 +508,8 @@ function Flash() {
     if (
       !addPosition({
         marketId: "flash",
-        title: `${asset.sym} 60s ${side.toUpperCase()} · Round #${round % 10000}`,
-        outcome: side.toUpperCase(),
+        marketTitle: `${asset.sym} ${timeframe} Up or Down`,
+        outcome: side.toUpperCase() as "UP" | "DOWN",
         stake,
         mult,
         round,
@@ -534,26 +524,36 @@ function Flash() {
     });
   };
 
-  // AFTER: Anchors latest live ticks to the right edge so older data continuously rolls left
+  // Right-to-left moving chart calculations
   const now = Date.now();
-  const roundStart = (round ?? Math.floor(now / 60000)) * 60000;
-  // 60-second rolling window with 3s right padding for live ticks
+  const tfSec = timeframe === "60s" ? 60 : timeframe === "5m" ? 300 : timeframe === "10m" ? 600 : 900;
+  const tfMs = tfSec * 1000;
+  const roundStart = (round ?? Math.floor(now / tfMs)) * tfMs;
   const winEnd = now + 3000;
-  const winStart = winEnd - 60000;
+  const winStart = winEnd - tfMs;
   const visible = series.filter((t) => t.t >= winStart - 5000);
   const chartData = visible;
   const prices = visible.map((t) => t.p);
-  const chanceData = visible.map((t) => ({ t: t.t, c: Math.round(flashProbability(t.p, lockP) * 1000) / 10 }));
-  const entries = myOrders.map((o) => ({ id: o.id, p: o.entry ?? o.lock ?? lockP ?? 0, up: o.outcome === "UP" }));
+  const chanceData = visible.map((t) => ({
+    t: t.t,
+    c: Math.round(flashProbability(t.p, lockP) * 1000) / 10,
+  }));
+  const entries = myOrders.map((o) => ({
+    id: o.id,
+    p: o.entry ?? o.lock ?? lockP ?? 0,
+    up: o.outcome === "UP",
+  }));
   const myStatus = myOrders.map((o) => {
     const entry = o.entry ?? o.lock ?? lockP ?? 0;
     const move = (price ?? entry) - entry;
     const winning = o.outcome === "UP" ? move > 0 : move < 0;
     return { id: o.id, side: o.outcome, winning, tie: move === 0, move, payout: payout(o.stake, o.mult) };
   });
+
   const lo = Math.min(...prices, lockP ?? asset.seed, ...entries.map((e) => e.p));
   const hi = Math.max(...prices, lockP ?? asset.seed, ...entries.map((e) => e.p));
-  const pad = (hi - lo) * 0.3 + asset.seed * 0.0001;
+  const pad = (hi - lo) * 0.25 + asset.seed * 0.0001;
+
   const settled = positions.filter(
     (p) => p.marketId === "flash" && (p.status === "won" || p.status === "lost"),
   );
@@ -563,175 +563,284 @@ function Flash() {
   );
   const buyDisabled = !!user && (!tradeAllowed || !lockP || !live || !ready);
 
+  const presetStakes = [50, 100, 250, 500, 1000];
+
   const trigger = (
-    <button className="flex items-center gap-1.5 rounded-lg px-1 text-lg font-bold">
-      {asset.sym.toLowerCase()} 60s up or down <ChevronDown className="h-5 w-5 text-primary" />
+    <button className="flex items-center gap-2 rounded-xl bg-secondary/80 px-3 py-1.5 text-base font-bold shadow-sm transition hover:bg-secondary">
+      <CoinIcon symbol={asset.sym} />
+      <span>{asset.sym} Up/Down</span>
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
     </button>
   );
 
-  const streak = history.slice(0, 5);
-
   return (
-    <div className="mx-auto max-w-7xl px-3 pb-44 pt-4 md:px-6 md:pb-6 md:pt-6">
-      <h1 className="sr-only">60-second Up or Down crypto rounds</h1>
+    <div className="mx-auto max-w-7xl px-3 pb-44 pt-3 md:px-6 md:pb-10 md:pt-5">
+      <h1 className="sr-only">Up or Down Crypto Prediction Rounds</h1>
       <Tutorial variant="flash" />
-      <div className="no-scrollbar mb-4 hidden gap-2 overflow-x-auto md:flex">
-        {assets.map((a) => (
-          <button
-            key={a.sym}
-            onClick={() => pick(a)}
-            className={cn(
-              "num shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold",
-              a.sym === asset.sym
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <CoinIcon symbol={a.sym} /> {a.sym}
-          </button>
-        ))}
-      </div>
 
-      <div className="flex items-center justify-between gap-3">
-        {mobile ? (
-          <>
-            <div onClick={() => setPicker(true)}>{trigger}</div>
-            <Drawer open={picker} onOpenChange={setPicker}>
-              <DrawerContent className="px-2 pb-6">
-                <DrawerTitle className="px-3 pt-3">Select market</DrawerTitle>
-                <DrawerDescription className="sr-only">
-                  Choose an asset for 60 second rounds
-                </DrawerDescription>
+      {/* TOP BAR: Asset picker, Timeframe pills, & WebSocket Status */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+        <div className="flex items-center gap-3">
+          {mobile ? (
+            <>
+              <div onClick={() => setPicker(true)}>{trigger}</div>
+              <Drawer open={picker} onOpenChange={setPicker}>
+                <DrawerContent className="px-2 pb-6">
+                  <DrawerTitle className="px-3 pt-3 font-bold">Select market</DrawerTitle>
+                  <DrawerDescription className="sr-only">Choose an asset</DrawerDescription>
+                  <AssetList current={asset} onPick={pick} />
+                </DrawerContent>
+              </Drawer>
+            </>
+          ) : (
+            <Popover open={picker} onOpenChange={setPicker}>
+              <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+              <PopoverContent align="start" className="w-80 p-1">
                 <AssetList current={asset} onPick={pick} />
-              </DrawerContent>
-            </Drawer>
-          </>
-        ) : (
-          <Popover open={picker} onOpenChange={setPicker}>
-            <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-1">
-              <AssetList current={asset} onPick={pick} />
-            </PopoverContent>
-          </Popover>
-        )}
-        <span
-          className={cn(
-            "flex shrink-0 items-center gap-1 whitespace-nowrap text-xs",
-            live ? "text-up" : "text-muted-foreground",
+              </PopoverContent>
+            </Popover>
           )}
-        >
+
+          {/* Timeframe Selector Pills */}
+          <div className="flex items-center rounded-lg bg-secondary/80 p-1 text-xs font-semibold">
+            {(["60s", "5m", "10m", "15m"] as const).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={cn(
+                  "rounded-md px-2.5 py-1 transition",
+                  timeframe === tf
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Binance Live Feed Indicator */}
+        <div className="flex items-center gap-2">
           <span
             className={cn(
-              "h-2 w-2 rounded-full",
-              asset.local
-                ? "bg-muted-foreground"
-                : status === "live"
-                  ? "animate-pulse bg-up"
-                  : status === "stale"
-                    ? "bg-chart-4"
-                    : "bg-down",
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+              live ? "bg-up/10 text-up" : "bg-muted text-muted-foreground",
             )}
-          />
-          {!asset.local && status === "stale" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}{" "}
-          {asset.local
-            ? "Simulated feed"
-            : status === "live"
-              ? "Binance live"
-              : status === "stale"
-                ? "Reconnecting"
-                : "Offline"}
+          >
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                asset.local
+                  ? "bg-muted-foreground"
+                  : status === "live"
+                    ? "animate-pulse bg-up"
+                    : status === "stale"
+                      ? "bg-amber-400"
+                      : "bg-down",
+              )}
+            />
+            {!asset.local && status === "stale" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Radio className="h-3.5 w-3.5" />
+            )}
+            {asset.local
+              ? "Simulated"
+              : status === "live"
+                ? "Binance live"
+                : status === "stale"
+                  ? "Reconnecting"
+                  : "Offline"}
+          </span>
           {!asset.local && status === "offline" && (
             <button
               onClick={retry}
-              className="ml-1 rounded border px-1.5 py-0.5 font-semibold text-foreground"
+              className="rounded-md border px-2 py-0.5 text-xs font-semibold hover:bg-secondary"
             >
               Retry
             </button>
           )}
-        </span>
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="min-w-0 p-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+      {/* ROUND NAVIGATION PILL CAROUSEL */}
+      <div className="no-scrollbar mt-3 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex shrink-0 items-center gap-1.5 rounded-lg border bg-secondary/50 px-2.5 py-1.5 font-semibold text-muted-foreground hover:text-foreground">
+              <History className="h-3.5 w-3.5" />
+              <span>Past</span>
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 p-2">
+            <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Recent Settlements
+            </p>
+            {history.length === 0 ? (
+              <p className="px-2 py-2 text-xs text-muted-foreground">No settled rounds yet.</p>
+            ) : (
+              <div className="max-h-48 divide-y overflow-y-auto">
+                {history.slice(0, 10).map((h) => (
+                  <div key={h.round} className="flex items-center justify-between py-1.5 text-xs">
+                    <span className="font-mono text-muted-foreground">#{h.round % 10000}</span>
+                    <span className={cn("font-bold", h.dir === "up" ? "text-up" : "text-down")}>
+                      {h.dir.toUpperCase()}
+                    </span>
+                    <span className="font-mono text-[11px]">{fmtPrice(h.settle, asset.decimals)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {/* Recent mini history dots */}
+        {history.slice(0, 4).map((h) => (
+          <div
+            key={h.round}
+            className="flex shrink-0 items-center gap-1 rounded-md border border-border/40 bg-card px-2 py-1 font-mono text-[11px]"
+          >
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                h.dir === "up" ? "bg-up" : "bg-down",
+              )}
+            />
+            <span>#{h.round % 10000}</span>
+          </div>
+        ))}
+
+        {/* Live Active Round Pill */}
+        <div className="flex shrink-0 items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1 font-semibold text-primary">
+          <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
+          <span>Round #{round !== null ? round % 10000 : "—"}</span>
+          <span className="rounded bg-primary/20 px-1 font-mono text-[10px]">LIVE</span>
+        </div>
+
+        {/* Upcoming Round */}
+        <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-card px-2.5 py-1 text-muted-foreground">
+          <span>Next #{round !== null ? (round + 1) % 10000 : "—"}</span>
+        </div>
+      </div>
+
+      {/* MAIN TWO-COLUMN TRADING GRID */}
+      <div className="mt-4 grid gap-5 md:grid-cols-[minmax(0,1fr)_340px]">
+        {/* LEFT COLUMN: Price hero, Chart & Live round status */}
+        <section className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm md:p-5">
+          {/* Header Stats */}
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-4">
             <div>
-              <p className="text-xs text-muted-foreground">
-                {asset.sym}/{asset.local ? "KES" : "USDT"}
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {asset.sym}/{asset.local ? "KES" : "USDT"} Live Price
+                </span>
+                <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  {timeframe}
+                </span>
+              </div>
               {ready ? (
-                <>
+                <div className="mt-1 flex items-baseline gap-3">
                   <Odometer
                     value={price ?? asset.seed}
                     format={(v) => fmtPrice(v, asset.decimals)}
-                    className={cn("num text-4xl font-bold", diff >= 0 ? "text-up" : "text-down")}
+                    className={cn("num text-3xl font-extrabold tracking-tight md:text-4xl", diff >= 0 ? "text-up" : "text-down")}
                   />
-                  <p className={cn("num text-sm", diff >= 0 ? "text-up" : "text-down")}>
-                    {diff >= 0 ? "▲" : "▼"} {fmtPrice(Math.abs(diff), asset.decimals)} vs lock
-                  </p>
-                </>
-              ) : (
-                <div className="mt-1 space-y-1.5">
-                  <div className="h-9 w-44 animate-pulse rounded bg-muted" />
-                  <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+                  <span className={cn("num text-sm font-semibold", diff >= 0 ? "text-up" : "text-down")}>
+                    {diff >= 0 ? "▲ +" : "▼ "}
+                    {fmtPrice(Math.abs(diff), asset.decimals)}
+                  </span>
                 </div>
+              ) : (
+                <div className="mt-2 h-10 w-48 animate-pulse rounded bg-muted" />
               )}
             </div>
-            <div className="text-right">
-              <p className="num text-xs text-muted-foreground">
-                Round #{round !== null ? round % 10000 : "—"}
-              </p>
-              <p
-                className={cn(
-                  "num text-4xl font-bold",
-                  locked ? "text-down" : "text-primary",
-                )}
-              >
-                00:{String(remaining).padStart(2, "0")}
-              </p>
-              <p className="text-xs text-muted-foreground">remaining</p>
+
+            {/* Countdown & Price to Beat */}
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-border/60 bg-secondary/40 px-3 py-2 text-right">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Lock Price
+                </p>
+                <div className="flex items-center justify-end gap-1 font-mono text-sm font-bold">
+                  <Lock className="h-3 w-3 text-primary" />
+                  <span>{ready && lockP ? fmtPrice(lockP, asset.decimals) : "—"}</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-secondary/40 px-3.5 py-2 text-right">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Time Left
+                </p>
+                <p
+                  className={cn(
+                    "num text-xl font-black",
+                    locked ? "text-down animate-pulse" : "text-primary",
+                  )}
+                >
+                  00:{String(remaining).padStart(2, "0")}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
-            <Lock className="h-4 w-4 text-primary" />
-            <span className="text-muted-foreground">Price to beat</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  aria-label="How settlement works"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 text-xs">
-                Each round locks this price at 00:00. At the next 00:00 the last observed price is
-                compared: at or above settles Up, below settles Down.
-              </PopoverContent>
-            </Popover>
-            <span className="num ml-auto font-bold">
-              {ready ? fmtPrice(lockP, asset.decimals) : "—"}
-            </span>
+
+          {/* Chart Controls Bar */}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-foreground">
+                {Math.round(pUp * 100)}% UP chance
+              </span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {100 - Math.round(pUp * 100)}% DOWN
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 rounded-lg bg-secondary/70 p-0.5 text-xs">
+              <button
+                onClick={() => setChartMode("line")}
+                className={cn(
+                  "rounded-md px-2 py-1 font-medium transition",
+                  chartMode === "line" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                Line
+              </button>
+              <button
+                onClick={() => setChartMode("candle")}
+                className={cn(
+                  "rounded-md px-2 py-1 font-medium transition",
+                  chartMode === "candle" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                Candles
+              </button>
+              <button
+                onClick={() => setChartMode("chance")}
+                className={cn(
+                  "rounded-md px-2 py-1 font-medium transition",
+                  chartMode === "chance" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                % Chance
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {chartMode === "line" ? "Live price" : chartMode === "candle" ? "5s candles" : "Up % chance"}
-            </span>
-            <select
-              aria-label="Chart type"
-              value={chartMode}
-              onChange={(e) => setChartMode(e.target.value as ChartMode)}
-              className="num rounded-md border bg-secondary px-2 py-1 text-xs font-semibold text-foreground"
-            >
-              <option value="line">Price</option>
-              <option value="candle">Candlestick · 5s</option>
-              <option value="chance">% Chance</option>
-            </select>
-          </div>
-          <div className="relative mt-2 h-[280px] min-h-[240px] min-w-0">
+          {/* Active Moving Chart Viewport */}
+          <div className="relative mt-2 h-[290px] min-h-[260px] min-w-0">
             {resolution && <FlashResolution result={resolution} decimals={asset.decimals} />}
             {ready && chartMode === "candle" ? (
-              <Candles series={series} lock={lockP} decimals={asset.decimals} now={now} roundStart={roundStart} entries={entries} />
+              <Candles
+                series={series}
+                lock={lockP}
+                decimals={asset.decimals}
+                now={now}
+                roundStart={roundStart}
+                entries={entries}
+                spanMs={tfMs}
+              />
             ) : ready && chartMode === "chance" ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chanceData} margin={{ top: 16, right: 4, left: 0, bottom: 0 }}>
@@ -757,10 +866,7 @@ function Flash() {
                     isAnimationActive={false}
                     dot={({ cx, cy, index }: { cx?: number; cy?: number; index?: number }) =>
                       index === chanceData.length - 1 ? (
-                        <g>
-                          <circle cx={cx} cy={cy} r={4} fill={pUp >= 0.5 ? "var(--up)" : "var(--down)"} />
-                          <circle className="radar-dot" cx={cx} cy={cy} r={7} fill="none" stroke={pUp >= 0.5 ? "var(--up)" : "var(--down)"} />
-                        </g>
+                        <circle cx={cx} cy={cy} r={4} fill={pUp >= 0.5 ? "var(--up)" : "var(--down)"} />
                       ) : (
                         <g />
                       )
@@ -770,10 +876,7 @@ function Flash() {
               </ResponsiveContainer>
             ) : ready ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 20, right: mobile ? 0 : 8, left: 0, bottom: 0 }}
-                >
+                <LineChart data={chartData} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
                   <XAxis
                     dataKey="t"
@@ -781,7 +884,7 @@ function Flash() {
                     domain={[winStart, winEnd]}
                     allowDataOverflow
                     tickFormatter={(t) =>
-                      new Date(t).toLocaleTimeString("en-KE", { hour12: false })
+                      new Date(t).toLocaleTimeString([], { minute: "2-digit", second: "2-digit" })
                     }
                     tick={{
                       fill: "var(--muted-foreground)",
@@ -804,31 +907,17 @@ function Flash() {
                     }}
                     axisLine={false}
                     tickLine={false}
-                    width={mobile ? 78 : 72}
+                    width={64}
                   />
-                  {myOrders.map((o) => (
-                    <ReferenceLine
-                      key={o.id}
-                      y={o.entry ?? o.lock ?? lockP ?? 0}
-                      stroke={o.outcome === "UP" ? "var(--up)" : "var(--down)"}
-                      strokeWidth={1.5}
-                      label={{
-                        value: `My ${o.outcome} entry ${fmtPrice(o.entry ?? o.lock ?? 0, asset.decimals)}`,
-                        position: "insideBottomLeft",
-                        fill: o.outcome === "UP" ? "var(--up)" : "var(--down)",
-                        fontSize: 10,
-                      }}
-                    />
-                  ))}
                   <ReferenceLine x={roundStart} stroke="var(--primary)" strokeOpacity={0.6} strokeDasharray="3 3" />
                   {lockP && (
                     <ReferenceLine
                       y={lockP}
                       stroke="var(--primary)"
-                      strokeWidth={2}
-                      strokeDasharray="6 4"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
                       label={{
-                        value: `Lock ${fmtPrice(lockP, asset.decimals)}`,
+                        value: `Target ${fmtPrice(lockP, asset.decimals)}`,
                         position: "insideTopLeft",
                         fill: "var(--primary)",
                         fontSize: 10,
@@ -840,20 +929,10 @@ function Flash() {
                     type="monotone"
                     dataKey="p"
                     stroke={diff >= 0 ? "var(--up)" : "var(--down)"}
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     dot={({ cx, cy, index }: { cx?: number; cy?: number; index?: number }) =>
                       index === chartData.length - 1 ? (
-                        <g>
-                          <circle cx={cx} cy={cy} r={4} fill={diff >= 0 ? "var(--up)" : "var(--down)"} />
-                          <circle
-                            className="radar-dot"
-                            cx={cx}
-                            cy={cy}
-                            r={7}
-                            fill="none"
-                            stroke={diff >= 0 ? "var(--up)" : "var(--down)"}
-                          />
-                        </g>
+                        <circle cx={cx} cy={cy} r={4.5} fill={diff >= 0 ? "var(--up)" : "var(--down)"} />
                       ) : (
                         <g />
                       )
@@ -866,169 +945,160 @@ function Flash() {
               <div className="h-full w-full animate-pulse rounded-lg bg-muted/70" />
             )}
           </div>
-          <div className="mt-3">
-            <p className="mb-1.5 text-xs text-muted-foreground">Past rounds</p>
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {history.length === 0 && (
-                <span className="text-xs text-muted-foreground">First round in progress…</span>
-              )}
-              {history.slice(0, 12).map((h) => {
-                const delta = h.settle - h.lock;
-                return (
-                  <div
-                    key={h.round}
-                    title={`${fmtPrice(h.lock, asset.decimals)} → ${fmtPrice(h.settle, asset.decimals)}`}
-                    className="num flex shrink-0 flex-col items-center rounded-md bg-muted/50 px-2 py-1 text-[10px]"
-                  >
-                    <span
-                      className={cn(
-                        "rounded px-1.5 font-bold",
-                        h.dir === "up" ? "bg-up/15 text-up" : "bg-down/15 text-down",
-                      )}
-                    >
-                      {h.dir === "up" ? "▲" : "▼"}
-                    </span>
-                    <span className={delta >= 0 ? "text-up" : "text-down"}>
-                      {delta >= 0 ? "+" : "−"}
-                      {fmtPrice(Math.abs(delta), asset.decimals)}
-                    </span>
-                    <span className="text-muted-foreground">#{h.round % 10000}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+
           <RoundPoll status={myStatus} price={price} entries={entries} decimals={asset.decimals} remaining={remaining} />
         </section>
 
-        <section className="hidden space-y-3 rounded-xl border bg-card p-4 md:block">
-          <div>
-            <p className="text-xs text-muted-foreground">Amount (KES)</p>
-            <input
-              aria-label="Stake amount"
-              inputMode="numeric"
-              value={stake ? stake.toLocaleString("en-KE") : ""}
-              placeholder="0"
-              onChange={(e) =>
-                setStake(Math.min(1_000_000, Number(e.target.value.replace(/\D/g, "")) || 0))
-              }
-              className="num mt-1 w-full bg-transparent text-3xl font-bold outline-none placeholder:text-muted-foreground/50"
-            />
-          </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {[50, 100, 500, 1000].map((c) => (
-              <Btn3D
-                key={c}
-                onClick={() => setStake((s) => s + c)}
-                className="num h-8 px-0 text-xs"
+        {/* RIGHT COLUMN: Polymarket Betting Sidebar */}
+        <section className="hidden space-y-4 rounded-2xl border bg-card p-4 shadow-sm md:block">
+          {/* Multiplier vs % Chance Toggle */}
+          <div className="flex items-center justify-between border-b border-border/30 pb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Market Odds
+            </span>
+            <div className="flex items-center rounded-lg bg-secondary p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setOddsMode("multiplier")}
+                className={cn(
+                  "rounded-md px-2 py-0.5 transition",
+                  oddsMode === "multiplier" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
               >
-                +{c}
-              </Btn3D>
-            ))}
-            <Btn3D onClick={() => setStake(10)} className="h-8 px-0 text-xs">
-              Reset
+                Multipliers
+              </button>
+              <button
+                onClick={() => setOddsMode("percentage")}
+                className={cn(
+                  "rounded-md px-2 py-0.5 transition",
+                  oddsMode === "percentage" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                % Chance
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Buy Presets with Win Payout */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Select Stake</span>
+              <span className="font-mono font-bold text-foreground">{fmtKES(stake)}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {presetStakes.map((amt) => {
+                const estWin = payout(amt, multUp);
+                return (
+                  <button
+                    key={amt}
+                    onClick={() => setStake(amt)}
+                    className={cn(
+                      "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition",
+                      stake === amt
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/60 bg-secondary/40 hover:bg-secondary text-foreground",
+                    )}
+                  >
+                    <span className="font-mono text-xs font-bold">{amt} KES</span>
+                    <span className="font-mono text-[10px] text-up font-semibold">
+                      win {fmtKES(estWin)}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setStake(10)}
+                className="flex items-center justify-center rounded-xl border border-dashed border-border/60 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* Custom Stake Input */}
+          <div>
+            <div className="relative">
+              <input
+                aria-label="Stake amount"
+                inputMode="numeric"
+                value={stake ? stake.toLocaleString("en-KE") : ""}
+                placeholder="Custom stake..."
+                onChange={(e) =>
+                  setStake(Math.min(1_000_000, Number(e.target.value.replace(/\D/g, "")) || 0))
+                }
+                className="num h-10 w-full rounded-xl border bg-secondary/40 px-3 text-sm font-bold outline-none focus:border-primary"
+              />
+              <span className="absolute right-3 top-2.5 text-xs font-bold text-muted-foreground">
+                KES
+              </span>
+            </div>
+          </div>
+
+          {/* Up & Down Action Buttons */}
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <Btn3D
+              variant="up"
+              disabled={buyDisabled || lockUp}
+              onClick={() => place("up")}
+              className="h-16 flex-col justify-center gap-0.5 rounded-xl shadow-md"
+            >
+              <span className="text-sm font-bold tracking-wide">▲ UP</span>
+              <span className="font-mono text-xs font-extrabold">
+                {oddsMode === "multiplier" ? `${multUp.toFixed(2)}x` : `${Math.round(pUp * 100)}%`}
+              </span>
+              <span className="text-[10px] opacity-80">
+                To win: {fmtKES(payout(stake, multUp))}
+              </span>
+            </Btn3D>
+
+            <Btn3D
+              variant="down"
+              disabled={buyDisabled || lockDown}
+              onClick={() => place("down")}
+              className="h-16 flex-col justify-center gap-0.5 rounded-xl shadow-md"
+            >
+              <span className="text-sm font-bold tracking-wide">▼ DOWN</span>
+              <span className="font-mono text-xs font-extrabold">
+                {oddsMode === "multiplier" ? `${multDown.toFixed(2)}x` : `${100 - Math.round(pUp * 100)}%`}
+              </span>
+              <span className="text-[10px] opacity-80">
+                To win: {fmtKES(payout(stake, multDown))}
+              </span>
             </Btn3D>
           </div>
-          <p className="num text-center text-[11px] text-muted-foreground">
-            {locked
-              ? `Final multipliers locked · resolving in ${remaining}s`
-              : "Est. multipliers — freeze at 15s"}
-          </p>
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            {(["up", "down"] as const).map((s) => {
-              const mult = s === "up" ? multUp : multDown;
-              const lockedOut = s === "up" ? lockUp : lockDown;
-              return (
-                <Btn3D
-                  key={s}
-                  variant={s}
-                  disabled={buyDisabled || lockedOut}
-                  onClick={() => place(s)}
-                  className="h-auto min-h-[92px] flex-col gap-1 px-2 py-3"
-                >
-                  <span className="text-sm font-bold">{s === "up" ? "▲ Up" : "▼ Down"}</span>
-                  {chartMode === "chance" ? (
-                    <span className="num text-xl font-bold leading-none">
-                      {Math.round((s === "up" ? pUp : 1 - pUp) * 100)}%
-                    </span>
-                  ) : (
-                    <Odometer
-                      value={mult}
-                      format={(v) => `${v.toFixed(2)}x`}
-                      className="num text-xl font-bold leading-none"
-                    />
-                  )}
-                  <span className="num whitespace-nowrap text-[11px] opacity-80">
-                    {lockedOut ? "Locked" : chartMode === "chance" ? `${mult.toFixed(2)}x · ` : ""}{fmtKES(payout(stake, mult))}
-                  </span>
-                </Btn3D>
-              );
-            })}
-          </div>
+
+          {/* Status notices */}
           {(lockUp || lockDown) && (
-            <p className="rounded-md bg-down/15 px-2 py-1 text-center text-[11px] font-semibold text-down">
+            <p className="rounded-lg bg-down/15 px-2.5 py-1.5 text-center text-[11px] font-semibold text-down">
               Max Liability Reached · Market Locked
             </p>
           )}
           {locked && !lockUp && !lockDown && myOrders.length === 0 && (
-            <p className="text-center text-xs text-down">
+            <p className="text-center text-xs font-medium text-down">
               Round Locked · Resolving in {remaining}s
             </p>
           )}
-          {lockP && price && myOrders.map((b) => {
-            const up = b.outcome.toUpperCase() === "UP";
-            const winning = up ? price >= lockP : price < lockP;
-            const need = Math.abs(up ? lockP - price : price - lockP);
-            return (
-              <div
-                key={b.id}
-                className={cn(
-                  "num flex items-center gap-2 rounded-md border px-2 py-1.5 text-[11px]",
-                  winning ? "border-up/40 bg-up/10 text-up" : "border-down/40 bg-down/10 text-down",
-                )}
-              >
-                <span className="font-bold">{b.outcome} {fmtKES(b.stake)}</span>
-                <span className="font-bold">{winning ? "WINNING" : "LOSING"}</span>
-                <span className="ml-auto truncate">
-                  {winning ? `→ ${fmtKES(payout(b.stake, b.mult), 2)}` : `needs ${fmtPrice(need, asset.decimals)}`} · {remaining}s
-                </span>
-              </div>
-            );
-          })}
-          <div className="space-y-1.5 rounded-lg border p-3 text-xs">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Round intel
-            </p>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Next round</span>
-              <span className="num">
-                #{round !== null ? (round + 1) % 10000 : "—"} · {asset.sym}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Pool bias</span>
-              <span className="num">
+
+          {/* Round Intel */}
+          <div className="space-y-2 rounded-xl border border-border/50 bg-secondary/30 p-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Pool Bias</span>
+              <span className="font-mono font-semibold">
                 {Math.round(bias * 100)}% Up / {100 - Math.round(bias * 100)}% Down
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Round volume</span>
-              <Odometer value={meta.volume} format={(v) => fmtKES(v)} className="num" />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Traders</span>
-              <span className="num">{meta.traders}</span>
+              <span className="text-muted-foreground">Round Volume</span>
+              <span className="font-mono font-semibold">{fmtKES(meta.volume)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Last 5 rounds</span>
+              <span className="text-muted-foreground">Streak</span>
               <span className="flex gap-1">
-                {streak.length === 0 && <span className="text-muted-foreground">—</span>}
-                {streak.map((h) => (
+                {history.slice(0, 5).map((h, i) => (
                   <span
-                    key={h.round}
+                    key={i}
                     className={cn(
-                      "grid h-5 w-5 place-items-center rounded text-[10px] font-bold",
-                      h.dir === "up" ? "bg-up/15 text-up" : "bg-down/15 text-down",
+                      "flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold",
+                      h.dir === "up" ? "bg-up/20 text-up" : "bg-down/20 text-down",
                     )}
                   >
                     {h.dir === "up" ? "▲" : "▼"}
@@ -1037,35 +1107,38 @@ function Flash() {
               </span>
             </div>
           </div>
-          <p className="text-center text-[11px] text-muted-foreground">
-            Round settles on the last price at 00:00 vs the locked price. Stakes are voided and
-            refunded in full if the feed drops mid-round.
-          </p>
         </section>
       </div>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="text-sm font-semibold">Past rounds · your PnL</h3>
-          <p
-            className={cn(
-              "num mt-1 text-xl font-bold",
-              pnl > 0 ? "text-up" : pnl < 0 ? "text-down" : "text-foreground",
-            )}
-          >
-            {pnl >= 0 ? "+" : "−"}
-            {fmtKES(Math.abs(pnl), 2)}
-          </p>
-          <div className="mt-2 divide-y text-sm">
+      {/* LOWER SECTION: P2P Live Activity & Your PnL */}
+      <section className="mt-6 grid gap-5 md:grid-cols-2">
+        <div className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <h3 className="text-sm font-bold">Your Positions & PnL</h3>
+            <span
+              className={cn(
+                "font-mono text-xs font-bold",
+                pnl >= 0 ? "text-up" : "text-down",
+              )}
+            >
+              {pnl >= 0 ? `+${fmtKES(pnl, 2)}` : `-${fmtKES(Math.abs(pnl), 2)}`}
+            </span>
+          </div>
+          <div className="mt-3 divide-y divide-border/40 text-xs">
             {settled.length === 0 && (
-              <p className="py-2 text-xs text-muted-foreground">No settled Flash positions yet.</p>
+              <p className="py-4 text-center text-muted-foreground">No settled positions yet this session.</p>
             )}
             {settled.slice(0, 6).map((p) => (
-              <div key={p.id} className="flex items-center justify-between py-2">
-                <span className="min-w-0 truncate text-xs">{p.title}</span>
+              <div key={p.id} className="flex items-center justify-between py-2.5">
+                <div>
+                  <span className={cn("font-bold", p.outcome === "UP" ? "text-up" : "text-down")}>
+                    {p.outcome}
+                  </span>
+                  <span className="ml-2 text-muted-foreground">Round #{p.round ?? "—"}</span>
+                </div>
                 <span
                   className={cn(
-                    "num shrink-0 text-xs font-bold",
+                    "font-mono font-bold",
                     p.status === "won" ? "text-up" : "text-down",
                   )}
                 >
@@ -1077,20 +1150,36 @@ function Flash() {
             ))}
           </div>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="text-sm font-semibold">Live activity</h3>
-          <div className="mt-2 divide-y text-sm">
+
+        <div className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <h3 className="text-sm font-bold">Live P2P Activity</h3>
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-up" />
+              Realtime
+            </span>
+          </div>
+          <div className="mt-3 divide-y divide-border/40 text-xs">
             {history.length === 0 && (
-              <p className="py-2 text-xs text-muted-foreground">Activity appears as rounds settle.</p>
+              <p className="py-4 text-center text-muted-foreground">Live orders and settlements appear here.</p>
             )}
             {history.slice(0, 6).map((h) => (
-              <div key={h.round} className="num flex items-center justify-between py-2 text-xs">
-                <span className="text-muted-foreground">
-                  #{h.round % 10000} · {fmtPrice(h.lock, asset.decimals)} →{" "}
+              <div key={h.round} className="flex items-center justify-between py-2.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded font-bold text-[10px]",
+                      h.dir === "up" ? "bg-up/20 text-up" : "bg-down/20 text-down",
+                    )}
+                  >
+                    {h.dir === "up" ? "▲" : "▼"}
+                  </span>
+                  <span>
+                    Round #{h.round % 10000} settled <strong className={h.dir === "up" ? "text-up" : "text-down"}>{h.dir.toUpperCase()}</strong>
+                  </span>
+                </div>
+                <span className="font-mono text-muted-foreground">
                   {fmtPrice(h.settle, asset.decimals)}
-                </span>
-                <span className={cn("font-bold", h.dir === "up" ? "text-up" : "text-down")}>
-                  {h.dir === "up" ? "▲ UP" : "▼ DOWN"}
                 </span>
               </div>
             ))}
@@ -1098,102 +1187,152 @@ function Flash() {
         </div>
       </section>
 
-      <section className="mt-4 rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-semibold">Flash FAQs</h3>
-        <div className="mt-2 divide-y text-sm">
+      {/* MARKET RULES & CONTEXT */}
+      <section className="mt-5 rounded-2xl border bg-card p-4 shadow-sm">
+        <h3 className="text-sm font-bold">Market Rules & Context</h3>
+        <div className="mt-3 divide-y divide-border/40 text-xs text-muted-foreground">
+          <div className="py-2.5">
+            <p className="font-semibold text-foreground">Oracle Price Source</p>
+            <p className="mt-1">
+              Resolves directly via the official Binance WebSocket feed for {asset.sym}/USDT. The lock price is recorded at round start, and the last observed tick at round end determines the outcome.
+            </p>
+          </div>
+          <div className="py-2.5">
+            <p className="font-semibold text-foreground">Anti-Sniping Lock Window</p>
+            <p className="mt-1">
+              Trading freezes {FLASH_LOCK_WINDOW_SECONDS} seconds before the round terminates to prevent millisecond sniping. Multipliers freeze into final fixed settlement odds.
+            </p>
+          </div>
+          <div className="py-2.5">
+            <p className="font-semibold text-foreground">Parimutuel Fair Multipliers</p>
+            <p className="mt-1">
+              Multipliers are balanced dynamically based on live liquidity and pool sentiment after a {Math.round(rakePct * 100)}% platform rake.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* FLASH FAQS */}
+      <section className="mt-5 rounded-2xl border bg-card p-4 shadow-sm">
+        <h3 className="text-sm font-bold">Frequently Asked Questions</h3>
+        <div className="mt-3 divide-y divide-border/40 text-xs">
           {[
             [
-              "How does a 60s round work?",
-              "Each round locks a price at 00:00. If the last price at the next 00:00 is above the lock, UP wins; below it, DOWN wins.",
+              "How does a round settle?",
+              "Each round records a target lock price at 00:00. If the closing price is at or above the lock, UP wins; if below, DOWN wins.",
             ],
             [
-              "How is the multiplier set?",
-              `Multipliers start at ${evenMult.toFixed(2)}x (${Math.round(rakePct * 100)}% rake) and move with the price and round pool. Obvious favorites are repriced down to pennies and payouts can never exceed the net distributable pool after rake.`,
+              "What happens if Binance WebSocket feed drops?",
+              "If the live feed drops mid-round, the round is voided automatically and 100% of all stakes are immediately refunded to your wallet.",
             ],
             [
-              "When does trading lock?",
-              `Trading closes ${FLASH_LOCK_WINDOW_SECONDS} seconds before settlement to stop last-millisecond sniping. Multipliers freeze then and settle as final. Sides at maximum liability are locked entirely.`,
-            ],
-            [
-              "What happens if the feed drops?",
-              "Open stakes are never resolved on synthetic prices — the round is voided and 100% of your stake is refunded to your wallet.",
-            ],
-            [
-              "How do I get paid?",
-              "Wins credit your Polka balance instantly at settlement. Withdraw anytime via M-Pesa B2C in the cashier.",
+              "How do I withdraw winnings?",
+              "Winnings credit your Polka wallet balance instantly upon resolution. You can cash out anytime via M-Pesa B2C.",
             ],
           ].map(([q, a]) => (
             <details key={q} className="group py-2.5">
-              <summary className="cursor-pointer list-none font-medium marker:hidden group-open:text-primary">
+              <summary className="cursor-pointer list-none font-medium text-foreground hover:text-primary">
                 {q}
               </summary>
-              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{a}</p>
+              <p className="mt-1 text-muted-foreground">{a}</p>
             </details>
           ))}
         </div>
       </section>
 
+      {/* MOBILE STICKY SETTLEMENT & BETTING BAR */}
       {mobile && (
-        <div className="fixed inset-x-0 bottom-[calc(57px+env(safe-area-inset-bottom))] z-40 space-y-2 border-t bg-background/95 p-2 backdrop-blur md:hidden">
-          {(lockUp || lockDown) && (
-            <p className="rounded-md bg-down/15 px-2 py-1 text-center text-[11px] font-semibold text-down">
-              Max Liability Reached · Market Locked
-            </p>
-          )}
-          {locked && !lockUp && !lockDown && (
-            <p className="num text-center text-xs font-semibold text-down">
-              Round Locked · Resolving in {remaining}s
-            </p>
-          )}
-          <div className="grid grid-cols-5 gap-1.5">
-            {[50, 100, 500].map((c) => (
+        <div className="fixed inset-x-0 bottom-[calc(57px+env(safe-area-inset-bottom))] z-40 space-y-2 border-t bg-background/95 p-2.5 backdrop-blur shadow-lg md:hidden">
+          {/* Determining Winner Loader */}
+          {isDetermining && (
+            <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2 text-primary border border-primary/20">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-xs font-bold">Hold on, determining winner...</span>
+              </div>
               <Btn3D
-                key={c}
-                onClick={() => setStake((s) => s + c)}
-                className="num h-8 px-0 text-xs"
+                variant="up"
+                disabled={buyDisabled || lockUp}
+                onClick={() => place("up")}
+                className="h-8 px-3 text-xs font-bold"
               >
-                +{c}
+                ▲ UP
               </Btn3D>
-            ))}
-            <input
-              aria-label="Stake amount"
-              inputMode="numeric"
-              enterKeyHint="done"
-              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-              onBlur={releaseKeyboard}
-              value={stake ? String(stake) : ""}
-              placeholder="0"
-              onChange={(e) =>
-                setStake(Math.min(1_000_000, Number(e.target.value.replace(/\D/g, "")) || 0))
-              }
-              className="num col-span-2 h-8 rounded-lg bg-muted px-2 text-xs font-bold outline-none"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {(["up", "down"] as const).map((s) => {
-              const mult = s === "up" ? multUp : multDown;
-              const lockedOut = s === "up" ? lockUp : lockDown;
-              return (
-                <Btn3D
-                  key={s}
-                  variant={s}
-                  disabled={buyDisabled || lockedOut}
-                  onClick={() => place(s)}
-                  className="h-12 flex-col gap-0"
-                >
-                  <span>{s === "up" ? "▲ UP" : "▼ DOWN"}</span>
-                  <Odometer
-                    value={mult}
-                    format={(v) => `${v.toFixed(2)}x`}
-                    className="num text-xs opacity-90"
-                  />
-                  <span className="num text-[10px] opacity-80">
-                    {fmtKES(payout(stake, mult))}
+            </div>
+          )}
+
+          {/* Settled Outcome Status Pill */}
+          {!isDetermining && (resolution || lastOutcome) && locked && (
+            <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2 border border-border">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span className="text-xs font-bold">
+                  Outcome:{" "}
+                  <span className={cn(lastOutcome === "up" ? "text-up" : "text-down")}>
+                    {lastOutcome ? lastOutcome.toUpperCase() : "RESOLVING"}
                   </span>
+                </span>
+              </div>
+              <Btn3D
+                variant="up"
+                disabled={buyDisabled || lockUp}
+                onClick={() => place("up")}
+                className="h-8 px-3 text-xs font-bold"
+              >
+                ▲ UP
+              </Btn3D>
+            </div>
+          )}
+
+          {/* Regular Mobile Betting Controls */}
+          {!isDetermining && !resolution && (
+            <>
+              {(lockUp || lockDown) && (
+                <p className="rounded-md bg-down/15 py-1 text-center text-[10px] font-semibold text-down">
+                  Max Liability Reached · Market Locked
+                </p>
+              )}
+              {locked && !lockUp && !lockDown && (
+                <p className="num text-center text-xs font-semibold text-down">
+                  Round Locked · Resolving in {remaining}s
+                </p>
+              )}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[50, 100, 250, 500].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setStake(c)}
+                    className={cn(
+                      "rounded-lg border py-1 font-mono text-[11px] font-bold transition",
+                      stake === c ? "border-primary bg-primary/15 text-primary" : "bg-secondary text-foreground",
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <Btn3D
+                  variant="up"
+                  disabled={buyDisabled || lockUp}
+                  onClick={() => place("up")}
+                  className="h-12 flex-col gap-0 rounded-xl"
+                >
+                  <span className="text-xs font-bold">▲ UP</span>
+                  <span className="font-mono text-xs font-extrabold">{multUp.toFixed(2)}x</span>
                 </Btn3D>
-              );
-            })}
-          </div>
+                <Btn3D
+                  variant="down"
+                  disabled={buyDisabled || lockDown}
+                  onClick={() => place("down")}
+                  className="h-12 flex-col gap-0 rounded-xl"
+                >
+                  <span className="text-xs font-bold">▼ DOWN</span>
+                  <span className="font-mono text-xs font-extrabold">{multDown.toFixed(2)}x</span>
+                </Btn3D>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
