@@ -73,30 +73,56 @@ export const Route = createFileRoute("/market/$id")({
     return { id: m.id, question: m.question, category: m.category, yes: Math.round((m.outcomes[0]?.prob ?? 0.5) * 100), lead: m.outcomes[0]?.label ?? "Yes" };
   },
 
-  head: ({ loaderData }) => ({
-    meta: loaderData
-      ? [
-          { title: `${loaderData.question} | Polka` },
-          {
-            name: "description",
-            content: `${loaderData.lead} at ${loaderData.yes}% on Polka. Trade this ${loaderData.category.toLowerCase()} market with instant M-Pesa deposits.`,
-          },
-          { property: "og:title", content: `${loaderData.question} | Polka` },
-          {
-            property: "og:description",
-            content: `${loaderData.lead} ${loaderData.yes}% chance · ${loaderData.category} market on Polka. See live odds, news and discussion.`,
-          },
-          { property: "og:type", content: "article" },
-          { property: "og:url", content: `https://polka4.lovable.app/market/${loaderData.id}` },
-          { name: "twitter:title", content: `${loaderData.question} | Polka` },
-          { name: "twitter:description", content: `${loaderData.lead} ${loaderData.yes}% chance on Polka.` },
-          { name: "twitter:card", content: "summary_large_image" },
-        ]
-      : [{ title: "Market unavailable | Polka" }, { name: "robots", content: "noindex" }],
-    links: loaderData ? [{ rel: "canonical", href: `https://polka4.lovable.app/market/${loaderData.id}` }] : [],
-  }),
-  component: MarketPage,
-});
+   head: ({ loaderData }) => {
+    if (!loaderData) {
+      return {
+        meta: [
+          { title: "Market unavailable | Polka" },
+          { name: "robots", content: "noindex" },
+        ],
+        links: [],
+      };
+    }
+
+    const marketUrl = `https://polka.co.ke/market/${loaderData.id}`;
+    const ogImageUrl = `https://polka.co.ke/api/og?id=${loaderData.id}&v=${loaderData.yes}`;
+
+    return {
+      meta: [
+        { title: `${loaderData.question} | Polka` },
+        {
+          name: "description",
+          content: `${loaderData.lead} at ${loaderData.yes}% on Polka. Trade this ${loaderData.category.toLowerCase()} market with instant M-Pesa deposits.`,
+        },
+        // Open Graph tags (Telegram, WhatsApp, Facebook, LinkedIn, Discord)
+        { property: "og:site_name", content: "Polka" },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: marketUrl },
+        { property: "og:title", content: `${loaderData.question} | Polka` },
+        {
+          property: "og:description",
+          content: `${loaderData.lead} ${loaderData.yes}% chance · ${loaderData.category} on Polka. Live odds, instant M-Pesa trades.`,
+        },
+        { property: "og:image", content: ogImageUrl },
+        { property: "og:image:secure_url", content: ogImageUrl },
+        { property: "og:image:type", content: "image/png" },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: `${loaderData.question} live odds card` },
+        // Twitter / X card tags
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:site", content: "@polkake" },
+        { name: "twitter:title", content: `${loaderData.question} | Polka` },
+        {
+          name: "twitter:description",
+          content: `${loaderData.lead} ${loaderData.yes}% chance on Polka. Instant M-Pesa payouts.`,
+        },
+        { name: "twitter:image", content: ogImageUrl },
+      ],
+      links: [{ rel: "canonical", href: marketUrl }],
+    };
+  },
+
 
 function CommentItem({ c, depth = 0, marketId, onReply }: { c: Comment; depth?: number; marketId: string; onReply: (parentId: string, reply: Comment) => void }) {
   const [open, setOpen] = useState(true);
