@@ -337,12 +337,26 @@ function Flash() {
   const statusRef = useRef(status);
   statusRef.current = status;
   const [history, setHistory] = useState<Result[]>([]);
+  // AFTER
   const [resolution, setResolution] = useState<FlashResolutionData | null>(null);
+  const [lastOutcome, setLastOutcome] = useState<"up" | "down" | null>(null);
+  const [isDetermining, setIsDetermining] = useState(false);
+
   useEffect(() => {
     if (!resolution) return;
+    setLastOutcome(resolution.dir);
     const timer = window.setTimeout(() => setResolution(null), FLASH_RESULT_DISPLAY_MS);
     return () => window.clearTimeout(timer);
   }, [resolution]);
+
+  // Trigger "Determining winner..." loader in the final seconds of the round
+  useEffect(() => {
+    if (remaining <= 2 && remaining > 0 && locked) {
+      setIsDetermining(true);
+    } else {
+      setIsDetermining(false);
+    }
+  }, [remaining, locked]);
   const [lockP, setLockP] = useState<number | null>(null);
   const [stake, setStake] = useState(100);
   const [chartMode, setChartMode] = useState<ChartMode>("line");
