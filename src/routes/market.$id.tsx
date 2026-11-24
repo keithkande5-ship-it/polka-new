@@ -604,23 +604,49 @@ function MarketPage() {
           ))}
         </section>
 
-        {myStake.length > 0 && (
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
-            <p className="font-semibold">Your positions</p>
+                {myStake.length > 0 && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-foreground">Your positions</p>
+              <Link to="/portfolio" className="text-xs font-bold text-primary hover:underline">
+                View in Portfolio →
+              </Link>
+            </div>
+
+            <div className="flex items-center justify-between gap-1 rounded-lg bg-background/50 p-2 text-[11px]">
+              <span className="font-bold text-emerald-500">✓ Order Placed</span>
+              <span className="text-muted-foreground">→</span>
+              <span className="font-semibold text-primary">Active in Pool</span>
+              <span className="text-muted-foreground">→</span>
+              <span className="text-muted-foreground">Payout upon Resolution</span>
+            </div>
+
             {myStake.map((p) => (
-              <p key={p.id} className="num mt-1 text-muted-foreground">
-                {p.outcome} · {fmtKES(p.stake)} @ {p.mult.toFixed(2)}x →{" "}
-                <span className="text-up">{fmtKES(p.stake * p.mult)}</span>
-                <span className="ml-2 text-[11px]">
-                  resolves in {fmtResolveEta(positionResolveAt(p) - now)}
-                </span>
-              </p>
+              <div key={p.id} className="border-t border-border/40 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="num text-muted-foreground">
+                  <span className="font-bold text-foreground">{p.outcome}</span> · {fmtKES(p.stake)} @ {p.mult.toFixed(2)}x →{" "}
+                  <span className="font-bold text-up">{fmtKES(p.stake * p.mult)}</span>
+                  <span className="ml-2 text-[11px] block sm:inline">
+                    resolves in {fmtResolveEta(positionResolveAt(p) - now)}
+                  </span>
+                </div>
+
+                <Btn3D
+                  variant="primary"
+                  className="h-7 px-2.5 text-xs font-semibold self-start sm:self-center"
+                  onClick={() => {
+                    const outcome = m.outcomes.find((o) => o.label === p.outcome);
+                    if (outcome) openSlip(m.id, outcome.id);
+                  }}
+                >
+                  + Add to position
+                </Btn3D>
+              </div>
             ))}
           </div>
         )}
 
-        <RulesNewsTabs rules={m.rules} oracle={m.oracle} news={[...adminNews, ...m.news]} />
-
+        <RulesNewsTabs rules={m.rules} oracle={m.oracle} news={[...adminNews, ...m.news]} status={m.state ?? "open"} />
         <section className="relative rounded-xl border bg-card p-4 pb-7">
           <ChartWatermark />
           <h3 className="flex items-center gap-2 text-sm font-semibold">
