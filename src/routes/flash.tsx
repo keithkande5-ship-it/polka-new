@@ -534,12 +534,13 @@ function Flash() {
     });
   };
 
+  // AFTER: Anchors latest live ticks to the right edge so older data continuously rolls left
   const now = Date.now();
-  // Window = previous round (left half) + live round filling left → right.
   const roundStart = (round ?? Math.floor(now / 60000)) * 60000;
-  const winStart = roundStart - 60000;
-  const winEnd = roundStart + 60000;
-  const visible = series.filter((t) => t.t >= winStart);
+  // 60-second rolling window with 3s right padding for live ticks
+  const winEnd = now + 3000;
+  const winStart = winEnd - 60000;
+  const visible = series.filter((t) => t.t >= winStart - 5000);
   const chartData = visible;
   const prices = visible.map((t) => t.p);
   const chanceData = visible.map((t) => ({ t: t.t, c: Math.round(flashProbability(t.p, lockP) * 1000) / 10 }));
