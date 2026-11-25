@@ -719,51 +719,61 @@ function Flash() {
           <span className="rounded bg-primary/20 px-1 font-mono text-[10px]">LIVE</span>
         </div>
 
-        {/* Upcoming Round */}
-       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-4">
-  <div className="flex flex-wrap items-end gap-4">
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">
-        {asset.sym}/{asset.local ? "KES" : "USDT"} Current Price
-      </p>
-      {ready ? (
-        <Odometer
-          value={price ?? asset.seed}
-          format={(v) => fmtPrice(v, asset.decimals)}
-          className={cn(
-            "num mt-1 text-3xl font-extrabold tracking-tight md:text-4xl",
-            diff >= 0 ? "text-up" : "text-down",
-          )}
-        />
-      ) : (
-        <div className="mt-2 h-10 w-48 animate-pulse rounded bg-muted" />
-      )}
-    </div>
+             {/* Upcoming Round */}
+        <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-card px-2.5 py-1 text-muted-foreground">
+          <span>Next #{round !== null ? (round + 1) % 10000 : "—"}</span>
+        </div>
+      </div>
 
-    <div className="border-l border-border/60 pl-4">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Price to Beat
-      </p>
-      <p className="num mt-1 text-sm font-bold">
-        {ready && lockP ? fmtPrice(lockP, asset.decimals) : "—"}
-      </p>
-    </div>
-  </div>
+      {/* MAIN TWO-COLUMN TRADING GRID */}
+      <div className="mt-4 grid gap-5 md:grid-cols-[minmax(0,1fr)_340px]">
+        {/* LEFT COLUMN: Price hero, Chart & Live round status */}
+        <section className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm md:p-5">
+          {/* Header Stats */}
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {asset.sym}/{asset.local ? "KES" : "USDT"} Current Price
+                </p>
+                {ready ? (
+                  <Odometer
+                    value={price ?? asset.seed}
+                    format={(v) => fmtPrice(v, asset.decimals)}
+                    className={cn(
+                      "num mt-1 text-3xl font-extrabold tracking-tight md:text-4xl",
+                      diff >= 0 ? "text-up" : "text-down",
+                    )}
+                  />
+                ) : (
+                  <div className="mt-2 h-10 w-48 animate-pulse rounded bg-muted" />
+                )}
+              </div>
 
-  <div className="rounded-xl border border-border/60 bg-secondary/40 px-3.5 py-2 text-right">
-    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-      Time Left
-    </p>
-    <p
-      className={cn(
-        "num text-xl font-black",
-        locked ? "text-down animate-pulse" : "text-primary",
-      )}
-    >
-      00:{String(remaining).padStart(2, "0")}
-    </p>
-  </div>
-</div>
+              <div className="border-l border-border/60 pl-4">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Price to Beat
+                </p>
+                <p className="num mt-1 text-sm font-bold">
+                  {ready && lockP ? fmtPrice(lockP, asset.decimals) : "—"}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-secondary/40 px-3.5 py-2 text-right">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Time Left
+              </p>
+              <p
+                className={cn(
+                  "num text-xl font-black",
+                  locked ? "text-down animate-pulse" : "text-primary",
+                )}
+              >
+                00:{String(remaining).padStart(2, "0")}
+              </p>
+            </div>
+          </div>
 
           {/* Chart Controls Bar */}
           <div className="mt-3 flex items-center justify-between gap-2">
