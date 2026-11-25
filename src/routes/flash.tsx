@@ -819,8 +819,8 @@ function Flash() {
 
           {/* Active Moving Chart Viewport */}
           <div className="relative mt-2 h-[290px] min-h-[260px] min-w-0">
-            {resolution && <FlashResolution result={resolution} decimals={asset.decimals} />}
-            {ready && chartMode === "candle" ? (
+        
+           {ready && chartMode === "candle" ? (
               <Candles
                 series={series}
                 lock={lockP}
