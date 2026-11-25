@@ -52,7 +52,7 @@ import {
 import { CoinIcon } from "@/components/polka/CoinIcon";
 import { cn } from "@/lib/utils";
 import { FLASH_RESULT_DISPLAY_MS } from "@/lib/market-presentation";
-import { FlashResolution, type FlashResolutionData } from "@/components/polka/FlashResolution";
+
 
 export const Route = createFileRoute("/flash")({
   validateSearch: (search: Record<string, unknown>) => {
