@@ -1250,28 +1250,16 @@ function Flash() {
             </div>
           )}
 
-          {/* Settled Outcome Status Pill */}
-          {!isDetermining && (resolution || lastOutcome) && locked && (
-            <div className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2 border border-border">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <span className="text-xs font-bold">
-                  Outcome:{" "}
-                  <span className={cn(lastOutcome === "up" ? "text-up" : "text-down")}>
-                    {lastOutcome ? lastOutcome.toUpperCase() : "RESOLVING"}
-                  </span>
-                </span>
-              </div>
-              <Btn3D
-                variant="up"
-                disabled={buyDisabled || lockUp}
-                onClick={() => place("up")}
-                className="h-8 px-3 text-xs font-bold"
-              >
-                ▲ UP
-              </Btn3D>
-            </div>
-          )}
+         {phase === "next" && lastOutcome && (
+  <div className="flex items-center justify-center rounded-xl border border-border bg-secondary px-3 py-2">
+    <span className="text-xs font-bold">
+      Outcome:{" "}
+      <span className={cn(lastOutcome === "up" ? "text-up" : "text-down")}>
+        {lastOutcome.toUpperCase()}
+      </span>
+    </span>
+  </div>
+)}
 
           {/* Regular Mobile Betting Controls */}
           {!isDetermining && !resolution && (
