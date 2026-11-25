@@ -730,60 +730,50 @@ function Flash() {
         {/* LEFT COLUMN: Price hero, Chart & Live round status */}
         <section className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm md:p-5">
           {/* Header Stats */}
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {asset.sym}/{asset.local ? "KES" : "USDT"} Live Price
-                </span>
-                <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                  {timeframe}
-                </span>
-              </div>
-              {ready ? (
-                <div className="mt-1 flex items-baseline gap-3">
-                  <Odometer
-                    value={price ?? asset.seed}
-                    format={(v) => fmtPrice(v, asset.decimals)}
-                    className={cn("num text-3xl font-extrabold tracking-tight md:text-4xl", diff >= 0 ? "text-up" : "text-down")}
-                  />
-                  <span className={cn("num text-sm font-semibold", diff >= 0 ? "text-up" : "text-down")}>
-                    {diff >= 0 ? "▲ +" : "▼ "}
-                    {fmtPrice(Math.abs(diff), asset.decimals)}
-                  </span>
-                </div>
-              ) : (
-                <div className="mt-2 h-10 w-48 animate-pulse rounded bg-muted" />
-              )}
-            </div>
+         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-4">
+  <div className="flex flex-wrap items-end gap-4">
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">
+        {asset.sym}/{asset.local ? "KES" : "USDT"} Current Price
+      </p>
+      {ready ? (
+        <Odometer
+          value={price ?? asset.seed}
+          format={(v) => fmtPrice(v, asset.decimals)}
+          className={cn(
+            "num mt-1 text-3xl font-extrabold tracking-tight md:text-4xl",
+            diff >= 0 ? "text-up" : "text-down",
+          )}
+        />
+      ) : (
+        <div className="mt-2 h-10 w-48 animate-pulse rounded bg-muted" />
+      )}
+    </div>
 
-            {/* Countdown & Price to Beat */}
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-border/60 bg-secondary/40 px-3 py-2 text-right">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Lock Price
-                </p>
-                <div className="flex items-center justify-end gap-1 font-mono text-sm font-bold">
-                  <Lock className="h-3 w-3 text-primary" />
-                  <span>{ready && lockP ? fmtPrice(lockP, asset.decimals) : "—"}</span>
-                </div>
-              </div>
+    <div className="border-l border-border/60 pl-4">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        Price to Beat
+      </p>
+      <p className="num mt-1 text-sm font-bold">
+        {ready && lockP ? fmtPrice(lockP, asset.decimals) : "—"}
+      </p>
+    </div>
+  </div>
 
-              <div className="rounded-xl border border-border/60 bg-secondary/40 px-3.5 py-2 text-right">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Time Left
-                </p>
-                <p
-                  className={cn(
-                    "num text-xl font-black",
-                    locked ? "text-down animate-pulse" : "text-primary",
-                  )}
-                >
-                  00:{String(remaining).padStart(2, "0")}
-                </p>
-              </div>
-            </div>
-          </div>
+  <div className="rounded-xl border border-border/60 bg-secondary/40 px-3.5 py-2 text-right">
+    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      Time Left
+    </p>
+    <p
+      className={cn(
+        "num text-xl font-black",
+        locked ? "text-down animate-pulse" : "text-primary",
+      )}
+    >
+      00:{String(remaining).padStart(2, "0")}
+    </p>
+  </div>
+</div>
 
           {/* Chart Controls Bar */}
           <div className="mt-3 flex items-center justify-between gap-2">
