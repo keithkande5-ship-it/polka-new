@@ -119,10 +119,12 @@ export const Route = createFileRoute("/market/$id")({
         },
         { name: "twitter:image", content: ogImageUrl },
       ],
-      links: [{ rel: "canonical", href: marketUrl }],
+           links: [{ rel: "canonical", href: marketUrl }],
     };
   },
-
+  component: MarketPage,
+});
+function CommentItem({ c, depth = 0, marketId, onReply }: ...
 
 function CommentItem({ c, depth = 0, marketId, onReply }: { c: Comment; depth?: number; marketId: string; onReply: (parentId: string, reply: Comment) => void }) {
   const [open, setOpen] = useState(true);
