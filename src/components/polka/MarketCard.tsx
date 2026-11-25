@@ -169,7 +169,7 @@ export function MarketCard({ m: base }: { m: Market }) {
               <button
                 key={o.id}
                 onClick={(e) => handleOutcomeClick(e, o)}
-                className="chunky-solid h-8 rounded-lg bg-secondary text-secondary-foreground border border-border text-xs font-bold hover:bg-muted transition-transform flex items-center justify-center gap-1 px-1"
+                className="chunky-solid h-8 rounded-lg bg-secondary text-secondary-foreground border border-border text-xs font-bold hover:bg-muted transition-transform flex items-center justify-center"
               >
                 <span className="truncate">{shortLabel}</span>
                 <span className="num">{Math.round(o.prob * 100)}%</span>
