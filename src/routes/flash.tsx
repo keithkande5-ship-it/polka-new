@@ -81,7 +81,50 @@ export const Route = createFileRoute("/flash")({
 type ChartMode = "line" | "candle" | "chance";
 type Timeframe = "60s" | "5m" | "10m" | "15m";
 type OddsDisplay = "multiplier" | "percentage";
+type FlashRoundPhase = "next" | "active";
 
+const FLASH_NEXT_SECONDS = 3;
+const FLASH_ACTIVE_SECONDS = 60;
+const FLASH_CYCLE_MS = (FLASH_NEXT_SECONDS + FLASH_ACTIVE_SECONDS) * 1000;
+
+function useFlashRound() {
+  const [now, setNow] = useState<number | null>(null);
+  const origin = useRef<number | null>(null);
+
+  useEffect(() => {
+    const start = Date.now();
+    origin.current = start;
+    setNow(start);
+
+    const timer = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  if (now === null || origin.current === null) {
+    return {
+      round: null as number | null,
+      remaining: FLASH_NEXT_SECONDS,
+      phase: "next" as FlashRoundPhase,
+      roundStart: null as number | null,
+    };
+  }
+
+  const elapsed = now - origin.current;
+  const cycle = Math.floor(elapsed / FLASH_CYCLE_MS);
+  const cycleOffset = elapsed % FLASH_CYCLE_MS;
+  const phase: FlashRoundPhase =
+    cycleOffset < FLASH_NEXT_SECONDS * 1000 ? "next" : "active";
+
+  return {
+    round: cycle,
+    phase,
+    remaining:
+      phase === "next"
+        ? Math.ceil((FLASH_NEXT_SECONDS * 1000 - cycleOffset) / 1000)
+        : Math.ceil((FLASH_CYCLE_MS - cycleOffset) / 1000),
+    roundStart: origin.current + cycle * FLASH_CYCLE_MS + FLASH_NEXT_SECONDS * 1000,
+  };
+}
 /** Traditional 5-second OHLC candles spanning the previous and current round. */
 function Candles({
   series,
