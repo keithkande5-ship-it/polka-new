@@ -390,11 +390,51 @@ function Flash() {
   const statusRef = useRef(status);
   statusRef.current = status;
 
-  const [history, setHistory] = useState<Result[]>([]);
+   const [history, setHistory] = useState<Result[]>([]);
   const [resolution, setResolution] = useState<FlashResolutionData | null>(null);
   const [lastOutcome, setLastOutcome] = useState<"up" | "down" | null>(null);
   const [isDetermining, setIsDetermining] = useState(false);
   const [lockP, setLockP] = useState<number | null>(null);
+
+  // Simulated preview activity; these are not real user trades.
+  const [botTrades, setBotTrades] = useState([
+    { id: "b1", user: "0x7a…e4", side: "UP" as const, stake: 250, time: "2s ago" },
+    { id: "b2", user: "Kamau.eth", side: "DOWN" as const, stake: 100, time: "5s ago" },
+    { id: "b3", user: "CryptoOtieno", side: "UP" as const, stake: 500, time: "11s ago" },
+    { id: "b4", user: "0x91…bc", side: "UP" as const, stake: 1000, time: "18s ago" },
+    { id: "b5", user: "Wanjiku_t", side: "DOWN" as const, stake: 200, time: "27s ago" },
+  ]);
+
+  const [comments, setComments] = useState([
+    { id: "c1", user: "satoshi.ke", text: "Bullish divergence on the 5m candles!", time: "1m ago", sentiment: "UP" as const },
+    { id: "c2", user: "AminaTrades", text: "Holding the price to beat nicely this round.", time: "3m ago", sentiment: "UP" as const },
+    { id: "c3", user: "NairobiWhale", text: "Heavy sell pressure incoming on Binance spot.", time: "6m ago", sentiment: "DOWN" as const },
+  ]);
+  const [newComment, setNewComment] = useState("");
+
+  useEffect(() => {
+    const names = ["0x4f…a2", "Mwangi.eth", "AmaniTrader", "0x88…f1", "Kip_crypto", "Baraka99"];
+    const stakes = [50, 100, 250, 500, 1000];
+
+    const interval = window.setInterval(() => {
+      const side = Math.random() > 0.48 ? "UP" : "DOWN";
+      const username = names[Math.floor(Math.random() * names.length)];
+      const stakeAmount = stakes[Math.floor(Math.random() * stakes.length)];
+
+      setBotTrades((previous) => [
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          user: username,
+          side,
+          stake: stakeAmount,
+          time: "just now",
+        },
+        ...previous.slice(0, 5),
+      ]);
+    }, 4500);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   lastPrice.current = price;
 
