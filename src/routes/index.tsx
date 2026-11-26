@@ -37,6 +37,7 @@ function Home() {
   const [cat, setCat] = useState<string>(category ?? "All");
   const [status, setStatus] = useState<StatusTab>("active");
   const [sort, setSort] = useState<SortOption>("trending");
+  const [showTutorial, setShowTutorial] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const marketVersion = useMarketsVersion();
   const [initialLoading, setInitialLoading] = useState(markets.length === 0);
@@ -246,16 +247,17 @@ function Home() {
             <HelpCircle className="h-4 w-4 text-primary shrink-0" />
             <span>New to prediction markets? Learn how trading, resolution, and instant M-Pesa payouts work.</span>
           </div>
-          <Link
-            to="/rules"
-            className="shrink-0 font-semibold text-primary hover:underline"
+                  <button
+            onClick={() => setShowTutorial(true)}
+            className="shrink-0 font-semibold text-primary hover:underline cursor-pointer"
           >
             How Polka Works →
-          </Link>
+          </button>
+
         </div>
       </div>
-
-      <BackToTop />
+            {showTutorial && <Tutorial variant="home" forceOpen />}
+ <BackToTop />
     </div>
   );
 }
