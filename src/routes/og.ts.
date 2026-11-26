@@ -1,0 +1,206 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { getMarket, markets, mapDbMarket, upsertMarket, toMultiplier, payout } from "@/lib/markets";
+import { supabase } from "@/integrations/supabase/client";
+
+function escapeXml(str: string): string {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function wrapText(text: string, maxCharsPerLine = 32, maxLines = 3): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const w of words) {
+    const candidate = current ? `${current} ${w}` : w;
+    if (candidate.length > maxCharsPerLine && current) {
+      lines.push(current);
+      current = w;
+      if (lines.length >= maxLines - 1) break;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines;
+}
+
+export const Route = createFileRoute("/api/og")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        const id = url.searchParams.get("id");
+
+        let m = id ? getMarket(id) : null;
+        if (!m && id) {
+          const { data } = await supabase.from("markets").select("*").eq("id", id).maybeSingle();
+          if (data) {
+            m = mapDbMarket(data);
+            upsertMarket(m);
+          }
+        }
+
+        const fallbackMarket = markets[0];
+        const market = m || fallbackMarket;
+        const thumbImg = market?.thumb?.img || "";
+
+        // If the market has an uploaded photo thumbnail, redirect directly so WhatsApp,
+        // Telegram, and Twitter/X render the rich card preview without format rejection.
+        if (thumbImg && thumbImg.startsWith("http")) {
+          return Response.redirect(thumbImg, 302);
+        }
+
+        const question = market?.question || "Kenya's Premier Prediction Market";
+        const category = (market?.category || "TRENDING").toUpperCase();
+        const outcomes = market?.outcomes || [
+          { label: "Yes", prob: 0.5 },
+          { label: "No", prob: 0.5 },
+        ];
+        const isBinary = outcomes.length === 2 && outcomes[0]?.label.toLowerCase() === "yes";
+
+        const qLines = wrapText(question, 30, 3);
+        const qSvg = qLines
+          .map((line, i) => `<tspan x="540" dy="${i === 0 ? 0 : 44}">${escapeXml(line)}</tspan>`)
+          .join("");
+
+        let rightContent = "";
+
+        if (isBinary) {
+          const yesProb = Math.round((outcomes[0]?.prob ?? 0.5) * 100);
+          const noProb = 100 - yesProb;
+          const yesMultiplier = toMultiplier(yesProb / 100);
+          const noMultiplier = toMultiplier(noProb / 100);
+          const yesPayout = payout(100, yesMultiplier);
+          const noPayout = payout(100, noMultiplier);
+
+          rightContent = `
+            <g transform="translate(540, 340)">
+              <rect x="0" y="6" width="280" height="76" rx="20" fill="#007A3D" />
+              <rect x="0" y="0" width="280" height="76" rx="20" fill="#00C26E" />
+              <rect x="6" y="4" width="268" height="6" rx="3" fill="#FFFFFF" fill-opacity="0.25" />
+              <text x="32" y="48" font-family="'Geist', 'Segoe UI', system-ui, sans-serif" font-weight="900" font-size="32" fill="#FFFFFF">YES</text>
+              <rect x="176" y="16" width="80" height="44" rx="14" fill="#007A3D" />
+              <text x="216" y="46" text-anchor="middle" font-family="'Geist Mono', monospace" font-weight="800" font-size="24" fill="#FFFFFF">${yesProb}%</text>
+              <text x="6" y="112" font-family="'Geist', system-ui, sans-serif" font-size="16" font-weight="600" fill="#94A3B8">
+                100 KSh bet <tspan fill="#38BDF8">➔ pays ${yesPayout} KSh</tspan>
+              </text>
+            </g>
+
+            <g transform="translate(850, 340)">
+              <rect x="0" y="6" width="280" height="76" rx="20" fill="#B91C1C" />
+              <rect x="0" y="0" width="280" height="76" rx="20" fill="#EF4444" />
+              <rect x="6" y="4" width="268" height="6" rx="3" fill="#FFFFFF" fill-opacity="0.25" />
+              <text x="32" y="48" font-family="'Geist', 'Segoe UI', system-ui, sans-serif" font-weight="900" font-size="32" fill="#FFFFFF">NO</text>
+              <rect x="176" y="16" width="80" height="44" rx="14" fill="#B91C1C" />
+              <text x="216" y="46" text-anchor="middle" font-family="'Geist Mono', monospace" font-weight="800" font-size="24" fill="#FFFFFF">${noProb}%</text>
+              <text x="6" y="112" font-family="'Geist', system-ui, sans-serif" font-size="16" font-weight="600" fill="#94A3B8">
+                100 KSh bet <tspan fill="#38BDF8">➔ pays ${noPayout} KSh</tspan>
+              </text>
+            </g>
+          `;
+        } else {
+          const topOutcomes = outcomes.slice(0, 3);
+          rightContent = topOutcomes
+            .map((o, idx) => {
+              const y = 300 + idx * 78;
+              const prob = Math.round(o.prob * 100);
+              const m = toMultiplier(o.prob);
+              const p = payout(100, m);
+              const barWidth = Math.max(20, Math.round((prob / 100) * 580));
+              return `
+                <g transform="translate(540, ${y})">
+                  <rect x="0" y="0" width="590" height="64" rx="14" fill="#151B27" stroke="#1E293B" stroke-width="1.5" />
+                  <rect x="0" y="0" width="${barWidth}" height="64" rx="14" fill="#00C26E" fill-opacity="0.15" />
+                  <text x="20" y="38" font-family="'Geist', system-ui, sans-serif" font-weight="700" font-size="20" fill="#FFFFFF">
+                    ${escapeXml(o.label.slice(0, 24))}
+                  </text>
+                  <text x="380" y="38" font-family="'Geist', system-ui, sans-serif" font-weight="600" font-size="15" fill="#94A3B8">
+                    100 KSh <tspan fill="#38BDF8">➔ ${p} KSh</tspan>
+                  </text>
+                  <rect x="500" y="14" width="74" height="36" rx="10" fill="#00C26E" />
+                  <text x="537" y="38" text-anchor="middle" font-family="'Geist Mono', monospace" font-weight="800" font-size="18" fill="#FFFFFF">${prob}%</text>
+                </g>
+              `;
+            })
+            .join("");
+        }
+
+        const leftGraphic = thumbImg
+          ? `
+            <image href="${escapeXml(thumbImg)}" x="0" y="0" width="480" height="630" preserveAspectRatio="xMidYMid slice" />
+            <rect x="0" y="0" width="480" height="630" fill="url(#leftOverlay)" />
+          `
+          : `
+            <rect x="0" y="0" width="480" height="630" fill="url(#leftGradient)" />
+            <circle cx="240" cy="300" r="110" fill="#009A44" fill-opacity="0.12" stroke="#009A44" stroke-width="2" />
+            <text x="240" y="315" text-anchor="middle" font-family="'Geist', sans-serif" font-weight="900" font-size="44" fill="#00C26E">POLKA</text>
+          `;
+
+        const svg = `
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leftGradient" x1="0" y1="0" x2="480" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E1626"/>
+      <stop offset="1" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="leftOverlay" x1="0" y1="0" x2="480" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#000000" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#0B0E14" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0B0E14"/>
+
+  <g>
+    ${leftGraphic}
+    <rect x="36" y="540" width="160" height="40" rx="10" fill="#000000" fill-opacity="0.75" stroke="#334155" stroke-width="1.5" />
+    <text x="116" y="565" text-anchor="middle" font-family="'Geist Mono', monospace" font-weight="700" font-size="15" fill="#38BDF8">${escapeXml(category)}</text>
+  </g>
+
+  <line x1="480" y1="0" x2="480" y2="630" stroke="#1E293B" stroke-width="2"/>
+  <line x1="480" y1="200" x2="480" y2="440" stroke="#00C26E" stroke-width="3" stroke-opacity="0.6"/>
+
+  <g transform="translate(540, 52)">
+    <text x="0" y="28" font-family="'Geist', sans-serif" font-weight="900" font-size="34" letter-spacing="1" fill="#FFFFFF">
+      POLKA<tspan fill="#00C26E">.</tspan>
+    </text>
+    <rect x="420" y="2" width="170" height="36" rx="18" fill="#009A44" fill-opacity="0.2" stroke="#009A44" stroke-width="1.5" />
+    <text x="505" y="25" text-anchor="middle" font-family="'Geist', sans-serif" font-weight="800" font-size="14" fill="#00E676">
+      M-PESA ⚡ INSTANT
+    </text>
+  </g>
+
+  <text x="540" y="150" font-family="'Geist', system-ui, -apple-system, sans-serif" font-weight="800" font-size="36" fill="#F8FAFC">
+    ${qSvg}
+  </text>
+
+  ${rightContent}
+
+  <g transform="translate(540, 570)">
+    <line x1="0" y1="0" x2="590" y2="0" stroke="#1E293B" stroke-width="1"/>
+    <text x="0" y="32" font-family="'Geist', sans-serif" font-weight="600" font-size="16" fill="#64748B">
+      Trade what happens next · Verified Kenyan Markets
+    </text>
+    <text x="590" y="32" text-anchor="end" font-family="'Geist Mono', monospace" font-weight="700" font-size="16" fill="#00C26E">
+      polka.co.ke
+    </text>
+  </g>
+</svg>
+`.trim();
+
+        return new Response(svg, {
+          headers: {
+            "Content-Type": "image/svg+xml; charset=utf-8",
+            "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400",
+          },
+        });
+      },
+    },
+  },
+});
