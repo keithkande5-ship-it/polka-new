@@ -666,7 +666,7 @@ function Flash() {
     (a, p) => a + (p.status === "won" ? p.stake * p.mult - p.stake : -p.stake),
     0,
   );
-  const buyDisabled = !!user && (!tradeAllowed || !lockP || !live || !ready);
+  const buyDisabled = !!user && (!tradeAllowed const buyDisabled = !!user && (!tradeAllowed || !lockP || !live || !ready || phase === "next");|| !lockP || !live || !ready);
 
   const presetStakes = [50, 100, 250, 500, 1000];
 
