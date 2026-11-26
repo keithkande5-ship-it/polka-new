@@ -315,7 +315,15 @@ function RoundPoll({
 }
 
 type Result = { round: number; dir: "up" | "down"; lock: number; settle: number; at: number };
-
+type FlashResolutionData = {
+  round: number;
+  dir: "up" | "down";
+  lock: number;
+  settle: number;
+  stake: number;
+  returned: number;
+  orders: number;
+};
 function roundMeta(round: number) {
   const h = hashId(`flash-round-${round}`);
   return { volume: 45_000 + (h % 55_000), traders: 140 + (h % 380) };
