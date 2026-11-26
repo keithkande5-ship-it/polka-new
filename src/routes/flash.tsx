@@ -597,7 +597,7 @@ function Flash() {
     });
   };
 
-  const place = (side: "up" | "down") => {
+  const place = (side: "up" | "down", amount = stake) => {
     if (!user) return openAuth();
     if (!navigator.onLine) {
       toast.error("No internet connection · Trading paused");
@@ -608,14 +608,15 @@ function Flash() {
       return;
     }
     if (round === null || !tradeAllowed || !lockP || !live || !ready) return;
-    if (stake > balance) return openCashier("deposit", stake - balance);
+    if (amount > balance) return openCashier("deposit", amount - balance);
+
     const mult = side === "up" ? multUp : multDown;
     if (
       !addPosition({
         marketId: "flash",
         marketTitle: `${asset.sym} ${timeframe} Up or Down`,
         outcome: side.toUpperCase() as "UP" | "DOWN",
-        stake,
+        stake: amount,
         mult,
         round,
         asset: asset.sym,
@@ -624,8 +625,9 @@ function Flash() {
       })
     )
       return;
-    toast(`${side.toUpperCase()} · ${fmtKES(stake)} @ ${mult.toFixed(2)}x`, {
-      description: `Projected payout ${fmtKES(payout(stake, mult), 2)}`,
+
+    toast(`${side.toUpperCase()} · ${fmtKES(amount)} @ ${mult.toFixed(2)}x`, {
+      description: `Projected payout ${fmtKES(payout(amount, mult), 2)}`,
     });
   };
 
@@ -1111,163 +1113,121 @@ function Flash() {
         </section>
 
         {/* RIGHT COLUMN: Polymarket Betting Sidebar */}
+               {/* RIGHT COLUMN: P2P One-Tap Trade Console */}
         <section className="hidden space-y-4 rounded-2xl border bg-card p-4 shadow-sm md:block">
-          {/* Multiplier vs % Chance Toggle */}
+          {/* Side Selector Tabs (UP vs DOWN) */}
           <div className="flex items-center justify-between border-b border-border/30 pb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Market Odds
+              Select Outcome
             </span>
             <div className="flex items-center rounded-lg bg-secondary p-0.5 text-xs font-semibold">
               <button
-                onClick={() => setOddsMode("multiplier")}
+                onClick={() => setSelectedSide("up")}
                 className={cn(
-                  "rounded-md px-2 py-0.5 transition",
-                  oddsMode === "multiplier" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                  "flex items-center gap-1 rounded-md px-3 py-1 font-bold transition",
+                  selectedSide === "up"
+                    ? "bg-up text-black shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                Multipliers
+                ▲ UP ({multUp.toFixed(2)}x)
               </button>
               <button
-                onClick={() => setOddsMode("percentage")}
+                onClick={() => setSelectedSide("down")}
                 className={cn(
-                  "rounded-md px-2 py-0.5 transition",
-                  oddsMode === "percentage" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                  "flex items-center gap-1 rounded-md px-3 py-1 font-bold transition",
+                  selectedSide === "down"
+                    ? "bg-down text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                % Chance
+                ▼ DOWN ({multDown.toFixed(2)}x)
               </button>
             </div>
           </div>
 
-          {/* Quick Buy Presets with Win Payout */}
+          {/* One-tap buy buttons */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Select Stake</span>
-              <span className="font-mono font-bold text-foreground">{fmtKES(stake)}</span>
+            <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>One-Tap Buy ({selectedSide.toUpperCase()})</span>
+              <span>Executes Instantly</span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {presetStakes.map((amt) => {
-                const estWin = payout(amt, multUp);
+            <div className="grid grid-cols-3 gap-2">
+              {[100, 250, 500].map((amt) => {
+                const activeMult = selectedSide === "up" ? multUp : multDown;
+                const estWin = payout(amt, activeMult);
+
                 return (
                   <button
                     key={amt}
-                    onClick={() => setStake(amt)}
+                    disabled={buyDisabled || (selectedSide === "up" ? lockUp : lockDown)}
+                    onClick={() => place(selectedSide, amt)}
                     className={cn(
-                      "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition",
-                      stake === amt
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/60 bg-secondary/40 hover:bg-secondary text-foreground",
+                      "flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition hover:scale-[1.02] active:scale-95 disabled:opacity-50",
+                      selectedSide === "up"
+                        ? "border-up/40 bg-up/10 hover:border-up"
+                        : "border-down/40 bg-down/10 hover:border-down",
                     )}
                   >
-                    <span className="font-mono text-xs font-bold">{amt} KES</span>
-                    <span className="font-mono text-[10px] text-up font-semibold">
-                      win {fmtKES(estWin)}
+                    <span className="font-mono text-sm font-bold text-foreground">
+                      {amt} KES
+                    </span>
+                    <span className="mt-1 flex items-center font-mono text-[10px] font-semibold text-up">
+                      win&nbsp;
+                      <Odometer
+                        value={estWin}
+                        format={(v) => fmtKES(v)}
+                        className="font-mono"
+                      />
                     </span>
                   </button>
                 );
               })}
-              <button
-                onClick={() => setStake(10)}
-                className="flex items-center justify-center rounded-xl border border-dashed border-border/60 text-xs font-semibold text-muted-foreground hover:text-foreground"
-              >
-                Reset
-              </button>
             </div>
           </div>
 
-          {/* Custom Stake Input */}
-          <div>
-            <div className="relative">
+          {/* Custom stake and Buy button */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center gap-2">
               <input
-                aria-label="Stake amount"
+                aria-label="Custom stake amount"
                 inputMode="numeric"
                 value={stake ? stake.toLocaleString("en-KE") : ""}
                 placeholder="Custom stake..."
                 onChange={(e) =>
                   setStake(Math.min(1_000_000, Number(e.target.value.replace(/\D/g, "")) || 0))
                 }
-                className="num h-10 w-full rounded-xl border bg-secondary/40 px-3 text-sm font-bold outline-none focus:border-primary"
+                className="num h-10 flex-1 rounded-xl border bg-secondary/40 px-3 text-sm font-bold outline-none focus:border-primary"
               />
-              <span className="absolute right-3 top-2.5 text-xs font-bold text-muted-foreground">
-                KES
-              </span>
+              <Btn3D
+                variant={selectedSide}
+                disabled={buyDisabled || (selectedSide === "up" ? lockUp : lockDown)}
+                onClick={() => place(selectedSide)}
+                className="h-10 px-4 text-xs font-bold"
+              >
+                Buy {selectedSide.toUpperCase()}
+              </Btn3D>
             </div>
-          </div>
-
-          {/* Up & Down Action Buttons */}
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            <Btn3D
-              variant="up"
-              disabled={buyDisabled || lockUp}
-              onClick={() => place("up")}
-              className="h-16 flex-col justify-center gap-0.5 rounded-xl shadow-md"
-            >
-              <span className="text-sm font-bold tracking-wide">▲ UP</span>
-              <span className="font-mono text-xs font-extrabold">
-                {oddsMode === "multiplier" ? `${multUp.toFixed(2)}x` : `${Math.round(pUp * 100)}%`}
-              </span>
-              <span className="text-[10px] opacity-80">
-                To win: {fmtKES(payout(stake, multUp))}
-              </span>
-            </Btn3D>
-
-            <Btn3D
-              variant="down"
-              disabled={buyDisabled || lockDown}
-              onClick={() => place("down")}
-              className="h-16 flex-col justify-center gap-0.5 rounded-xl shadow-md"
-            >
-              <span className="text-sm font-bold tracking-wide">▼ DOWN</span>
-              <span className="font-mono text-xs font-extrabold">
-                {oddsMode === "multiplier" ? `${multDown.toFixed(2)}x` : `${100 - Math.round(pUp * 100)}%`}
-              </span>
-              <span className="text-[10px] opacity-80">
-                To win: {fmtKES(payout(stake, multDown))}
-              </span>
-            </Btn3D>
-          </div>
-
-          {/* Status notices */}
-          {(lockUp || lockDown) && (
-            <p className="rounded-lg bg-down/15 px-2.5 py-1.5 text-center text-[11px] font-semibold text-down">
-              Max Liability Reached · Market Locked
+            <p className="text-center text-[11px] text-muted-foreground">
+              Win payout:{" "}
+              <strong className="text-up">
+                {fmtKES(payout(stake, selectedSide === "up" ? multUp : multDown))}
+              </strong>
             </p>
+          </div>
+
+          {/* Intermission and lock status */}
+          {phase === "next" && (
+            <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 py-2.5 text-center text-xs font-bold text-primary">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Next round starting in {remaining}s...</span>
+            </div>
           )}
-          {locked && !lockUp && !lockDown && myOrders.length === 0 && (
+          {phase === "active" && locked && !lockUp && !lockDown && myOrders.length === 0 && (
             <p className="text-center text-xs font-medium text-down">
               Round Locked · Resolving in {remaining}s
             </p>
           )}
-
-          {/* Round Intel */}
-          <div className="space-y-2 rounded-xl border border-border/50 bg-secondary/30 p-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Pool Bias</span>
-              <span className="font-mono font-semibold">
-                {Math.round(bias * 100)}% Up / {100 - Math.round(bias * 100)}% Down
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Round Volume</span>
-              <span className="font-mono font-semibold">{fmtKES(meta.volume)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Streak</span>
-              <span className="flex gap-1">
-                {history.slice(0, 5).map((h, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold",
-                      h.dir === "up" ? "bg-up/20 text-up" : "bg-down/20 text-down",
-                    )}
-                  >
-                    {h.dir === "up" ? "▲" : "▼"}
-                  </span>
-                ))}
-              </span>
-            </div>
-          </div>
         </section>
       </div>
 
