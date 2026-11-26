@@ -477,4 +477,3 @@ export function Cashier() {
     </Sheet>
   );
 }
-
