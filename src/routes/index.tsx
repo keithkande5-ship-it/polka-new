@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, Flame, TrendingUp, Clock, HelpCircle, ShieldAlert } from "lucide-react";
-import { markets, useCategories, type Market } from "@/lib/markets";
+import { markets, useCategories, useMarketsVersion, type Market } from "@/lib/markets";
 import { MarketCard } from "@/components/polka/MarketCard";
 import { cn } from "@/lib/utils";
 import { BackToTop } from "@/components/polka/BackToTop";
@@ -37,6 +37,15 @@ function Home() {
   const [status, setStatus] = useState<StatusTab>("active");
   const [sort, setSort] = useState<SortOption>("trending");
   const [searchQuery, setSearchQuery] = useState("");
+  const marketVersion = useMarketsVersion();
+  const [initialLoading, setInitialLoading] = useState(markets.length === 0);
+
+  useEffect(() => {
+    if (markets.length > 0) {
+      const t = setTimeout(() => setInitialLoading(false), 150);
+      return () => clearTimeout(t);
+    }
+  }, [marketVersion]);
 
   useEffect(() => {
     setCat(category ?? "All");
@@ -188,8 +197,32 @@ function Home() {
           </div>
         </div>
 
-        {/* 4. Responsive Market Cards Grid */}
-        {filteredMarkets.length === 0 ? (
+              {/* 4. Responsive Market Cards Grid */}
+        {initialLoading && markets.length === 0 ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-4 lg:gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="relative flex flex-col justify-between rounded-2xl border border-border bg-card p-4 min-h-[160px] overflow-hidden"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 w-20 rounded-md bg-muted animate-pulse" />
+                    <div className="h-4 w-12 rounded-full bg-muted/70 animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="h-10 rounded-xl bg-muted/80 animate-pulse" />
+                  <div className="h-10 rounded-xl bg-muted/80 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredMarkets.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border p-12 text-center space-y-2">
             <ShieldAlert className="h-8 w-8 text-muted-foreground mx-auto" />
             <p className="text-sm font-semibold text-foreground">No {status} markets found</p>
@@ -204,6 +237,7 @@ function Home() {
             ))}
           </div>
         )}
+
 
         {/* 5. Educational / How It Works Link Banner */}
         <div className="mt-8 rounded-2xl border border-border bg-card/60 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
