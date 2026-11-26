@@ -253,9 +253,26 @@ export function Cashier() {
       })
       .catch((e: unknown) => fail(e instanceof Error ? e.message : "M-Pesa request failed, try again later"));
   };
-  return (
-     const isMobile = useIsMobile();
-  const cashierContent = (
+   return (
+    <Sheet
+      open={cashier.open}
+      onOpenChange={(o) => {
+        if (!o) {
+          if (timer.current) clearTimeout(timer.current);
+          closeCashier();
+        }
+      }}
+    >
+      <SheetContent className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm">
+        <SheetHeader className="border-b p-5">
+          <SheetTitle className="flex gap-2">
+            <Smartphone className="h-5 w-5 text-mpesa" />
+            M-Pesa Cashier
+          </SheetTitle>
+          <SheetDescription>M-Pesa deposits and withdrawals via PalPluss</SheetDescription>
+          <p className="num text-sm">Balance {fmtKES(balance, 2)}</p>
+        </SheetHeader>
+        <div className="space-y-4 p-5">
     <div className="p-5 space-y-4">
       {/* Prominent Deposit vs Custom Withdraw Toggle */}
       <div className="flex rounded-xl bg-secondary p-1 text-xs font-bold">
@@ -375,7 +392,7 @@ export function Cashier() {
                   type="tel"
                   className="input-field num mt-1"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="+254 7… or +254 1…"
                 />
               </label>
@@ -459,6 +476,4 @@ export function Cashier() {
     </Sheet>
   );
 }
-export function Onboarding() {
-  return <AccountOnboarding />;
-}
+
