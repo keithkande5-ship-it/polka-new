@@ -369,9 +369,11 @@ function Flash() {
   const [oddsMode, setOddsMode] = useState<OddsDisplay>("multiplier");
   const [chartMode, setChartMode] = useState<ChartMode>("line");
   const [stake, setStake] = useState(100);
+  const [selectedSide, setSelectedSide] = useState<"up" | "down">("up");
+  const [selectedHistory, setSelectedHistory] = useState<Result | null>(null);
 
   const { price, live, series, status, ready, retry } = useLivePrice(asset);
-  const { round, remaining } = useRound();
+  const { round, remaining, phase } = useFlashRound(timeframe);
   const {
     balance,
     openCashier,
