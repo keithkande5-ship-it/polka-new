@@ -1051,18 +1051,38 @@ function Flash() {
                     width={64}
                   />
                   <ReferenceLine x={roundStart} stroke="var(--primary)" strokeOpacity={0.6} strokeDasharray="3 3" />
+                                   {/* Orange Target Line (Price to Beat) */}
                   {lockP && (
                     <ReferenceLine
                       y={lockP}
-                      stroke="var(--primary)"
+                      stroke="#f7931a"
                       strokeWidth={1.5}
                       strokeDasharray="4 3"
                       label={{
-                        value: `Target ${fmtPrice(lockP, asset.decimals)}`,
-                        position: "insideTopLeft",
-                        fill: "var(--primary)",
+                        value: `Target $${fmtPrice(lockP, asset.decimals)}`,
+                        position: "insideTopRight",
+                        fill: "#f7931a",
                         fontSize: 10,
                         fontFamily: "var(--font-mono)",
+                        fontWeight: "bold",
+                      }}
+                    />
+                  )}
+
+                  {/* Current Price Horizontal Tracker Line */}
+                  {price && (
+                    <ReferenceLine
+                      y={price}
+                      stroke={diff >= 0 ? "var(--up)" : "var(--down)"}
+                      strokeWidth={1.2}
+                      strokeDasharray="3 3"
+                      label={{
+                        value: `$${fmtPrice(price, asset.decimals)}`,
+                        position: "insideBottomRight",
+                        fill: diff >= 0 ? "var(--up)" : "var(--down)",
+                        fontSize: 10,
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: "bold",
                       }}
                     />
                   )}
