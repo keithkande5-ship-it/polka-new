@@ -4,6 +4,7 @@ import { Search, Flame, TrendingUp, Clock, HelpCircle, ShieldAlert } from "lucid
 import { markets, useCategories, useMarketsVersion, type Market } from "@/lib/markets";
 import { MarketCard } from "@/components/polka/MarketCard";
 import { cn } from "@/lib/utils";
+import { Tutorial } from "@/components/polka/Tutorial";
 import { BackToTop } from "@/components/polka/BackToTop";
 
 const TRENDING_TAGS = ["#KPLDerby", "#RutoApproval", "#USDKES", "#EPL", "#BTC"];
