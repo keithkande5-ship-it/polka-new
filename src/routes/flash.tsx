@@ -666,7 +666,7 @@ function Flash() {
     (a, p) => a + (p.status === "won" ? p.stake * p.mult - p.stake : -p.stake),
     0,
   );
-  const buyDisabled = !!user && (!tradeAllowed const buyDisabled = !!user && (!tradeAllowed || !lockP || !live || !ready || phase === "next");|| !lockP || !live || !ready);
+  const buyDisabled = !!user && (!tradeAllowed || !lockP || !live || !ready || phase === "next");
 
   const presetStakes = [50, 100, 250, 500, 1000];
 
@@ -827,7 +827,50 @@ function Flash() {
             {phase === "next" ? "PREPARING" : "LIVE"}
           </span>
         </div>
-
+      {/* Selected Round History Details */}
+      {selectedHistory && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-secondary/50 p-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-bold">
+              Round #{selectedHistory.round % 10000} Details
+            </span>
+            <span
+              className={cn(
+                "rounded px-2 py-0.5 font-bold",
+                selectedHistory.dir === "up"
+                  ? "bg-up/20 text-up"
+                  : "bg-down/20 text-down",
+              )}
+            >
+              {selectedHistory.dir.toUpperCase()} WIN
+            </span>
+            <span className="text-muted-foreground">
+              Price to Beat:{" "}
+              <strong className="text-foreground">
+                {fmtPrice(selectedHistory.lock, asset.decimals)}
+              </strong>
+            </span>
+            <span className="text-muted-foreground">
+              Settled:{" "}
+              <strong className="text-foreground">
+                {fmtPrice(selectedHistory.settle, asset.decimals)}
+              </strong>
+            </span>
+            <span className="text-muted-foreground">
+              Settled at:{" "}
+              <strong className="text-foreground">
+                {new Date(selectedHistory.at).toLocaleTimeString()}
+              </strong>
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedHistory(null)}
+            className="rounded px-2 py-0.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          >
+            Close ✕
+          </button>
+        </div>
+      )}
        {/* Upcoming Round */}
         <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-card px-2.5 py-1 text-muted-foreground">
           <span>Next #{round !== null ? (round + 1) % 10000 : "—"}</span>
