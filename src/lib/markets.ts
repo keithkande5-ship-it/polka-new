@@ -402,11 +402,19 @@ export function fmtDateTime(ts: number) {
   });
 }
 
-// ---- Dynamic categories: admin-created categories join the filter pills app-wide ----
+// ---- Dynamic categories: admin-created categories join filter pills globally ----
 const baseCats: string[] = categories.slice(1);
-let extraCategories: string[] = [];
+let extraCategories: string[] = (() => {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("polka_custom_categories") || "[]");
+  } catch {
+    return [];
+  }
+})();
 let catVersion = 0;
 const catListeners = new Set<() => void>();
+
 export function addCategory(name: string) {
   const c = name.trim();
   if (!c) return false;
@@ -415,19 +423,28 @@ export function addCategory(name: string) {
   );
   if (!exists) {
     extraCategories = [...extraCategories, c];
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("polka_custom_categories", JSON.stringify(extraCategories));
+      } catch {}
+    }
     catVersion++;
     catListeners.forEach((l) => l());
   }
   return true;
 }
+
 function subscribeCats(cb: () => void) {
   catListeners.add(cb);
   return () => void catListeners.delete(cb);
 }
-/** Reactive category list — includes custom categories added from the admin studio. */
+
+/** Reactive category list: dynamically includes all categories from active markets + custom ones */
 export function useCategories() {
   useSyncExternalStore(subscribeCats, () => catVersion, () => catVersion);
-  return ["All", ...baseCats, ...extraCategories];
+  const marketCats = Array.from(new Set(markets.map((m) => m.category).filter(Boolean)));
+  const all = Array.from(new Set([...baseCats, ...extraCategories, ...marketCats]));
+  return ["All", ...all];
 }
 
 /** Probability path recorded for live-priced binary markets (daily crypto rounds). Starts empty; only real ticks. */
