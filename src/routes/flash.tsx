@@ -179,8 +179,9 @@ function Candles({
   const bodyW = Math.max(3, cw * 0.62);
   const xOf = (k: number) => (k - first) * cw + cw / 2;
   const openX = ((roundStart - (roundStart - spanMs)) / (spanMs * 2)) * plotW;
-  const isUp = (last?.c ?? 0) >= (lock ?? 0);
-  const trackerColor = isUp ? "var(--up)" : "var(--down)";
+ const last = buckets.get(liveK) ?? vals.at(-1);
+const isUp = (last?.c ?? 0) >= (lock ?? 0);
+const trackerColor = isUp ? "var(--up)" : "var(--down)";
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full overflow-visible" preserveAspectRatio="none">
