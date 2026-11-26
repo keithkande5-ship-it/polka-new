@@ -801,11 +801,13 @@ function Flash() {
           </PopoverContent>
         </Popover>
 
-        {/* Recent mini history dots */}
-        {history.slice(0, 4).map((h) => (
-          <div
+               {/* Clickable Recent Mini History Dots */}
+        {history.slice(0, 5).map((h) => (
+          <button
             key={h.round}
-            className="flex shrink-0 items-center gap-1 rounded-md border border-border/40 bg-card px-2 py-1 font-mono text-[11px]"
+            onClick={() => setSelectedHistory(h)}
+            aria-label={`View details for round ${h.round % 10000}`}
+            className="flex shrink-0 items-center gap-1 rounded-md border border-border/40 bg-card px-2 py-1 font-mono text-[11px] transition hover:border-primary"
           >
             <span
               className={cn(
@@ -814,17 +816,19 @@ function Flash() {
               )}
             />
             <span>#{h.round % 10000}</span>
-          </div>
+          </button>
         ))}
 
         {/* Live Active Round Pill */}
         <div className="flex shrink-0 items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1 font-semibold text-primary">
           <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
           <span>Round #{round !== null ? round % 10000 : "—"}</span>
-          <span className="rounded bg-primary/20 px-1 font-mono text-[10px]">LIVE</span>
+          <span className="rounded bg-primary/20 px-1 font-mono text-[10px]">
+            {phase === "next" ? "PREPARING" : "LIVE"}
+          </span>
         </div>
 
-               {/* Upcoming Round */}
+       {/* Upcoming Round */}
         <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-card px-2.5 py-1 text-muted-foreground">
           <span>Next #{round !== null ? (round + 1) % 10000 : "—"}</span>
         </div>
