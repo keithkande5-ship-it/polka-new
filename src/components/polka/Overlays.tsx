@@ -171,11 +171,21 @@ export function Cashier() {
   useEffect(() => {
     if (cashier.open) {
       setStage("form");
-      setPhone(user?.phone ?? "");
+      const savedPhone = typeof window !== "undefined" ? localStorage.getItem("polka_safaricom_phone") : null;
+      setPhone(savedPhone || user?.phone || "");
       setAmount(cashier.amount ?? 500);
       setView(cashier.tab === "withdraw" ? "withdraw" : "deposit");
     }
   }, [cashier.open, cashier.amount, user?.phone, cashier.tab]);
+
+  // Save phone number whenever it changes and normalizes
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    if (typeof window !== "undefined" && val.length >= 9) {
+      localStorage.setItem("polka_safaricom_phone", val);
+    }
+  };
+
   const deposit = view === "deposit";
   const q = cashierQuote(amount, deposit);
   const invalid =
@@ -244,24 +254,46 @@ export function Cashier() {
       .catch((e: unknown) => fail(e instanceof Error ? e.message : "M-Pesa request failed, try again later"));
   };
   return (
-    <Sheet
-      open={cashier.open}
-      onOpenChange={(o) => {
-        if (!o) {
-          if (timer.current) clearTimeout(timer.current);
-          closeCashier();
-        }
-      }}
-    >
-      <SheetContent className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm">
-        <SheetHeader className="border-b p-5">
-          <SheetTitle className="flex gap-2">
-            <Smartphone className="h-5 w-5 text-mpesa" />
-            M-Pesa Cashier
-          </SheetTitle>
-          <SheetDescription>M-Pesa deposits and withdrawals via PalPluss</SheetDescription>
-          <p className="num text-sm">Balance {fmtKES(balance, 2)}</p>
-        </SheetHeader>
+     const isMobile = useIsMobile();
+  const cashierContent = (
+    <div className="p-5 space-y-4">
+      {/* Prominent Deposit vs Custom Withdraw Toggle */}
+      <div className="flex rounded-xl bg-secondary p-1 text-xs font-bold">
+        <button
+          onClick={() => setView("deposit")}
+          className={cn(
+            "flex-1 rounded-lg py-2 transition-all",
+            view === "deposit"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Deposit (M-Pesa)
+        </button>
+        <button
+          onClick={() => setView("withdraw")}
+          className={cn(
+            "flex-1 rounded-lg py-2 transition-all",
+            view === "withdraw"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Withdraw
+        </button>
+        <button
+          onClick={() => setView("history")}
+          className={cn(
+            "px-3 rounded-lg py-2 transition-all",
+            view === "history"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          History
+        </button>
+      </div>
+
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-3 gap-2">
             {(["deposit", "withdraw", "history"] as const).map((t) => (
