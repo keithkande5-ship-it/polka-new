@@ -179,8 +179,8 @@ function Candles({
   const bodyW = Math.max(3, cw * 0.62);
   const xOf = (k: number) => (k - first) * cw + cw / 2;
   const openX = ((roundStart - (roundStart - spanMs)) / (spanMs * 2)) * plotW;
-  const last = buckets.get(liveK) ?? vals.at(-1);
-  const lastColor = last && last.c >= last.o ? "var(--up)" : "var(--down)";
+  const isUp = (last?.c ?? 0) >= (lock ?? 0);
+  const trackerColor = isUp ? "var(--up)" : "var(--down)";
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full overflow-visible" preserveAspectRatio="none">
@@ -191,15 +191,35 @@ function Candles({
       </defs>
       <rect width={plotW} height={plotH} y={top} fill="url(#grid)" opacity={0.6} />
 
-      {/* Lock Reference Line */}
+      {/* Orange Target Line (Price to Beat) */}
       {lock && (
         <g>
-          <line x1={0} x2={plotW} y1={y(lock)} y2={y(lock)} stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="4 3" opacity={0.8} />
-          <text x={plotW + 4} y={y(lock) + 3} fill="var(--primary)" fontSize="10" fontFamily="var(--font-mono)">
+          <line x1={0} x2={plotW} y1={y(lock)} y2={y(lock)} stroke="#f7931a" strokeWidth="1.5" strokeDasharray="4 3" />
+          <rect x={plotW + 4} y={y(lock) - 10} width="66" height="20" rx="4" fill="#f7931a" />
+          <text x={plotW + 8} y={y(lock) + 4} fill="#000000" fontSize="10" fontWeight="bold" fontFamily="var(--font-mono)">
             {fmtPrice(lock, decimals)}
           </text>
         </g>
       )}
+
+      {/* Dynamic Live Price Tracker Line */}
+      {last && (
+        <g>
+          <line x1={0} x2={plotW} y1={y(last.c)} y2={y(last.c)} stroke={trackerColor} strokeWidth="1.2" strokeDasharray="3 3" opacity={0.8} />
+          <rect x={plotW + 4} y={y(last.c) - 10} width="66" height="20" rx="4" fill={trackerColor} />
+          <text x={plotW + 8} y={y(last.c) + 4} fill="#ffffff" fontSize="10" fontWeight="bold" fontFamily="var(--font-mono)">
+            {fmtPrice(last.c, decimals)}
+          </text>
+        </g>
+      )}
+
+      {/* Y-Axis High & Low Guide Prices */}
+      <text x={plotW + 8} y={top + 10} fill="var(--muted-foreground)" fontSize="9" fontFamily="var(--font-mono)">
+        {fmtPrice(hi, decimals)}
+      </text>
+      <text x={plotW + 8} y={top + plotH} fill="var(--muted-foreground)" fontSize="9" fontFamily="var(--font-mono)">
+        {fmtPrice(lo, decimals)}
+      </text>
 
       {/* Round Open Line */}
       <line x1={openX} x2={openX} y1={top} y2={top + plotH} stroke="var(--primary)" strokeWidth="1" strokeDasharray="3 3" opacity={0.6} />
@@ -226,7 +246,7 @@ function Candles({
       ))}
     </svg>
   );
-}
+
 
 /** Live win/lose tug-of-war for each open order this round. */
 function RoundPoll({
