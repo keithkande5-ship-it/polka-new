@@ -1,5 +1,5 @@
 import { getRake, safeQuote } from "@/lib/trading-rules";
-import { useEffect, useState } from "react";
+import { Lock, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { fmtKES, fmtOutcome, payout, toMultiplier, useMarket, useNowTick } from "@/lib/markets";
 import { useStore } from "@/lib/store";
@@ -176,19 +176,25 @@ export function TradePanel({
       {blocked && !frozen && (
         <p className="text-xs text-down">Opposing position already open. Hold until settlement.</p>
       )}
-      {frozen ? (
-        <div className="space-y-2">
-          <p className="text-center text-xs text-chart-4">
-            {m.state === "proposed"
-              ? "Result proposed · dispute window is open"
-              : m.state === "settled"
-                ? "Market settled"
-                : "Trading closed · awaiting result"}
-          </p>
-          <Btn3D disabled className="h-12 w-full text-base opacity-60">
-            Buy {o.label}
-            {stake > 0 && <span className="num">· {fmtKES(stake)}</span>}
-          </Btn3D>
+           {frozen ? (
+        <div className="space-y-2.5">
+          {m.state === "settled" || m.state === "resolved" ? (
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-3.5 text-sm font-bold text-emerald-400">
+              <Trophy className="h-4 w-4 shrink-0 text-emerald-400" />
+              <span>
+                {m.finalOutcome
+                  ? `${m.finalOutcome}: Won`
+                  : m.outcomes.length === 2
+                  ? `${m.outcomes[0]?.label}: Won`
+                  : `${o.label}: Won`}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-xl bg-secondary border border-border p-3.5 text-sm font-semibold text-muted-foreground">
+              <Lock className="h-4 w-4 shrink-0" />
+              <span>Markets Closed · Trading Disabled</span>
+            </div>
+          )}
         </div>
       ) : short ? (
         <div className="space-y-2">
