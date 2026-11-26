@@ -244,9 +244,9 @@ function Candles({
       {entries.map((e) => (
         <circle key={e.id} cx={plotW - 12} cy={y(e.p)} r="3.5" fill={e.up ? "var(--up)" : "var(--down)"} stroke="var(--background)" strokeWidth="1" />
       ))}
-    </svg>
+      </svg>
   );
-
+}
 
 /** Live win/lose tug-of-war for each open order this round. */
 function RoundPoll({
