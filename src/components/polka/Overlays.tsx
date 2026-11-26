@@ -251,13 +251,10 @@ export function Cashier() {
         };
         timer.current = setTimeout(poll, 4000);
       })
-      .catch((e: unknown) =>
+          .catch((e: unknown) =>
         fail(e instanceof Error ? e.message : "M-Pesa request failed, try again later"),
       );
   };
-
-  return (
-    <Sheet
 
   return (
     <Sheet
