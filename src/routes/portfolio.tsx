@@ -110,21 +110,37 @@ function Portfolio() {
                   );
                 })()}
               </td>
-              <td className="px-4 py-3 text-right text-xs">
+                            <td className="px-4 py-3 text-right text-xs">
                 {p.status === "open" ? (
                   <span className="num text-muted-foreground">
                     in {fmtResolveEta(positionResolveAt(p) - now)}
                   </span>
+                ) : p.status === "won" ? (
+                  <span className="inline-flex items-center rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
+                    Won
+                  </span>
+                ) : p.status === "lost" ? (
+                  <span className="inline-flex items-center rounded-md bg-orange-500/15 border border-orange-500/30 px-2 py-0.5 text-[11px] font-bold text-orange-400">
+                    Lost
+                  </span>
                 ) : p.status === "voided" ? (
-                  <span className="text-muted-foreground">
-                    Refunded{p.settledAt ? ` · ${fmtDateTime(p.settledAt)}` : ""}
+                  <span className="inline-flex items-center rounded-md bg-secondary border border-border px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+                    Voided
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">
-                    {p.settledAt ? fmtDateTime(p.settledAt) : "—"}
+                  <span className="inline-flex items-center gap-1.5 text-xs text-destructive font-medium">
+                    <span>Error</span>
+                    <span>·</span>
+                    <a
+                      href={`mailto:support@polka.co.ke?subject=Position%20Report%20${p.id}`}
+                      className="text-primary underline hover:opacity-80"
+                    >
+                      Report
+                    </a>
                   </span>
                 )}
               </td>
+
             </tr>
           ))}
         </tbody>
