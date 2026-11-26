@@ -272,9 +272,7 @@ export function Cashier() {
           <SheetDescription>M-Pesa deposits and withdrawals via PalPluss</SheetDescription>
           <p className="num text-sm">Balance {fmtKES(balance, 2)}</p>
         </SheetHeader>
-        <div className="space-y-4 p-5">
-    <div className="p-5 space-y-4">
-      {/* Prominent Deposit vs Custom Withdraw Toggle */}
+      
       <div className="flex rounded-xl bg-secondary p-1 text-xs font-bold">
         <button
           onClick={() => setView("deposit")}
