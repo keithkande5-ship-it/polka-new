@@ -109,8 +109,7 @@ function Portfolio() {
                     </span>
                   );
                 })()}
-              </td>
-                            <td className="px-4 py-3 text-right text-xs">
+              </td>              <td className="px-4 py-3 text-right text-xs">
                 {p.status === "open" ? (
                   <span className="num text-muted-foreground">
                     in {fmtResolveEta(positionResolveAt(p) - now)}
