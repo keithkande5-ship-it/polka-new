@@ -65,20 +65,19 @@ function Home() {
       }
 
       // 2. Status Filter
-      const isClosed = (m.state ?? "open") === "closed" || m.closesAt <= Date.now();
+      const isSettled = m.state === "settled" || m.state === "resolved";
       const isDisputed = m.state === "disputed";
-      const isResolved = m.state === "resolved";
+      const isClosed = !isSettled && !isDisputed && ((m.state === "closed") || (Boolean(m.closesAt) && m.closesAt <= Date.now()));
 
       if (status === "active") {
-        if (isClosed || isDisputed || isResolved) return false;
+        if (isClosed || isDisputed || isSettled) return false;
       } else if (status === "closed") {
-        if (!isClosed || isResolved || isDisputed) return false;
+        if (!isClosed) return false;
       } else if (status === "disputed") {
         if (!isDisputed) return false;
       } else if (status === "resolved") {
-        if (!isResolved) return false;
+        if (!isSettled) return false;
       }
-
       // 3. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().replace(/^#/, "");
