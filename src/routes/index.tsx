@@ -240,16 +240,22 @@ function Home() {
         )}
 
 
-        {/* 5. Educational / How It Works Link Banner */}
-                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <button
-              onClick={() => setShowTutorial(true)}
-              className="hover:text-foreground transition-colors underline cursor-pointer"
-            >
-              How Polka Works
-            </button>
-            <span>·</span>
-            <Link to="/terms" className="hover:text-foreground transition-colors">
-              Terms & Rules
-            </Link>
+              {/* 5. Educational / How It Works Link Banner */}
+        <div className="mt-8 rounded-2xl border border-border bg-card/60 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-primary shrink-0" />
+            <span>New to prediction markets? Learn how trading, resolution, and instant M-Pesa payouts work.</span>
           </div>
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="shrink-0 font-semibold text-primary hover:underline cursor-pointer"
+          >
+            How Polka Works →
+          </button>
+        </div>
+      </div>
+      {showTutorial && <Tutorial variant="home" forceOpen />}
+      <BackToTop />
+    </div>
+  );
+}
