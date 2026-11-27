@@ -1274,7 +1274,7 @@ function Flash() {
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="rounded-2xl border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-border/40 pb-3">
             <h3 className="text-sm font-bold">Live P2P Activity</h3>
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -1283,30 +1283,72 @@ function Flash() {
             </span>
           </div>
           <div className="mt-3 divide-y divide-border/40 text-xs">
-            {history.length === 0 && (
-              <p className="py-4 text-center text-muted-foreground">Live orders and settlements appear here.</p>
-            )}
-            {history.slice(0, 6).map((h) => (
-              <div key={h.round} className="flex items-center justify-between py-2.5">
+            {botTrades.slice(0, 6).map((b) => (
+              <div key={b.id} className="flex items-center justify-between py-2.5">
                 <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded font-bold text-[10px]",
-                      h.dir === "up" ? "bg-up/20 text-up" : "bg-down/20 text-down",
-                    )}
-                  >
-                    {h.dir === "up" ? "▲" : "▼"}
-                  </span>
-                  <span>
-                    Round #{h.round % 10000} settled <strong className={h.dir === "up" ? "text-up" : "text-down"}>{h.dir.toUpperCase()}</strong>
+                  <span className="font-semibold text-foreground">{b.user}</span>
+                  <span className="rounded bg-secondary/80 px-1.5 py-0.5 text-[10px] text-muted-foreground font-mono">
+                    P2P
                   </span>
                 </div>
-                <span className="font-mono text-muted-foreground">
-                  {fmtPrice(h.settle, asset.decimals)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={cn("font-bold", b.side === "UP" ? "text-up" : "text-down")}>
+                    {b.side}
+                  </span>
+                  <span className="font-mono">{fmtKES(b.stake)}</span>
+                  <span className="text-[10px] text-muted-foreground">{b.time}</span>
+                </div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* P2P TRADER DISCUSSION & COMMENTS */}
+      <section className="mt-6 rounded-2xl border bg-card p-4 shadow-sm">
+        <h3 className="text-sm font-bold">P2P Trader Chat & Discussion</h3>
+        <div className="mt-3 space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start justify-between rounded-xl bg-secondary/40 p-2.5 text-xs">
+              <div>
+                <span className="font-bold text-foreground">{c.user}</span>
+                <p className="mt-0.5 text-muted-foreground">{c.text}</p>
+              </div>
+              <span className="text-[10px] text-muted-foreground shrink-0">{c.time}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Share your price prediction or thought..."
+            className="h-9 flex-1 rounded-xl border bg-background px-3 text-xs outline-none focus:border-primary"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newComment.trim()) {
+                setComments((prev) => [
+                  { id: `c-${Date.now()}`, user: user?.phone ? `${user.phone.slice(0, 4)}***` : "You", text: newComment.trim(), time: "Just now" },
+                  ...prev,
+                ]);
+                setNewComment("");
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              if (newComment.trim()) {
+                setComments((prev) => [
+                  { id: `c-${Date.now()}`, user: user?.phone ? `${user.phone.slice(0, 4)}***` : "You", text: newComment.trim(), time: "Just now" },
+                  ...prev,
+                ]);
+                setNewComment("");
+              }
+            }}
+            className="h-9 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground transition hover:opacity-90"
+          >
+            Post
+          </button>
         </div>
       </section>
 
