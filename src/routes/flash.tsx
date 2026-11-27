@@ -84,45 +84,37 @@ type OddsDisplay = "multiplier" | "percentage";
 type FlashRoundPhase = "next" | "active";
 
 const FLASH_NEXT_SECONDS = 3;
-const FLASH_ACTIVE_SECONDS = 60;
-const FLASH_CYCLE_MS = (FLASH_NEXT_SECONDS + FLASH_ACTIVE_SECONDS) * 1000;
 
-function useFlashRound() {
-  const [now, setNow] = useState<number | null>(null);
-  const origin = useRef<number | null>(null);
+function getActiveSeconds(tf: Timeframe): number {
+  if (tf === "5m") return 300;
+  if (tf === "10m") return 600;
+  if (tf === "15m") return 900;
+  return 60;
+}
+
+function useFlashRound(timeframe: Timeframe = "60s") {
+  const [now, setNow] = useState<number>(Date.now());
+  const activeSec = getActiveSeconds(timeframe);
+  const cycleMs = (FLASH_NEXT_SECONDS + activeSec) * 1000;
 
   useEffect(() => {
-    const start = Date.now();
-    origin.current = start;
-    setNow(start);
-
     const timer = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(timer);
   }, []);
 
-  if (now === null || origin.current === null) {
-    return {
-      round: null as number | null,
-      remaining: FLASH_NEXT_SECONDS,
-      phase: "next" as FlashRoundPhase,
-      roundStart: null as number | null,
-    };
-  }
-
-  const elapsed = now - origin.current;
-  const cycle = Math.floor(elapsed / FLASH_CYCLE_MS);
-  const cycleOffset = elapsed % FLASH_CYCLE_MS;
-  const phase: FlashRoundPhase =
-    cycleOffset < FLASH_NEXT_SECONDS * 1000 ? "next" : "active";
+  const cycle = Math.floor(now / cycleMs);
+  const cycleOffset = now % cycleMs;
+  const phase: FlashRoundPhase = cycleOffset < FLASH_NEXT_SECONDS * 1000 ? "next" : "active";
+  const remaining = phase === "next"
+    ? Math.max(1, Math.ceil((FLASH_NEXT_SECONDS * 1000 - cycleOffset) / 1000))
+    : Math.max(1, Math.ceil((cycleMs - cycleOffset) / 1000));
+  const roundStart = cycle * cycleMs + FLASH_NEXT_SECONDS * 1000;
 
   return {
     round: cycle,
     phase,
-    remaining:
-      phase === "next"
-        ? Math.ceil((FLASH_NEXT_SECONDS * 1000 - cycleOffset) / 1000)
-        : Math.ceil((FLASH_CYCLE_MS - cycleOffset) / 1000),
-    roundStart: origin.current + cycle * FLASH_CYCLE_MS + FLASH_NEXT_SECONDS * 1000,
+    remaining,
+    roundStart,
   };
 }
 /** Traditional 5-second OHLC candles spanning the previous and current round. */
@@ -677,7 +669,8 @@ function Flash() {
     (a, p) => a + (p.status === "won" ? p.stake * p.mult - p.stake : -p.stake),
     0,
   );
-  const buyDisabled = !!user && (!tradeAllowed || !lockP || !live || !ready || phase === "next");
+  const buyDisabled = !tradeAllowed || phase === "next" || !live;
+
 
   const presetStakes = [50, 100, 250, 500, 1000];
 
