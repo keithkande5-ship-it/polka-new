@@ -470,8 +470,17 @@ function Studio() {
         prob: Math.round((1 / n) * 1000) / 1000,
         ...(outImgs[i]?.trim() ? { img: outImgs[i]!.trim() } : {}),
       })),
-      rules: rules.trim(),
+         rules: rules.trim(),
       oracle: source.trim(),
+      sport: sportOn
+        ? {
+            league: league.trim(),
+            home: home.trim(),
+            away: away.trim(),
+            homeCrest: homeCrest || undefined,
+            awayCrest: awayCrest || undefined,
+          }
+        : undefined,
     };
 
     void supabase
@@ -488,6 +497,7 @@ function Studio() {
           volume: seed,
           endsLabel: marketPayload.ends,
           closesAt: Date.parse(closes),
+          sport: marketPayload.sport,
           news: [],
           comments: [],
         });
