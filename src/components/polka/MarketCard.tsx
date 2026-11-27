@@ -76,9 +76,9 @@ export function MarketCard({ m: base }: { m: Market }) {
   const navigate = useNavigate();
   const { oddsMode, openSlip, user, addPosition, balance, openCashier } = useStore();
 
-  const isClosed = (m.state ?? "open") === "closed" || m.closesAt <= Date.now();
+    const isSettled = m.state === "settled" || m.state === "resolved";
   const isDisputed = m.state === "disputed";
-  const isResolved = m.state === "resolved";
+  const isClosed = !isSettled && !isDisputed && ((m.state === "closed") || (Boolean(m.closesAt) && m.closesAt <= Date.now()));
   const sport = m.sport;
   const isBinary = !sport && m.outcomes.length === 2;
   const isMulti = !sport && m.outcomes.length > 2;
@@ -154,12 +154,12 @@ export function MarketCard({ m: base }: { m: Market }) {
         )}
       </div>
 
-      {/* 2. Middle Outcome Area */}
+          {/* 2. Middle Outcome Area */}
       <div className="my-2.5">
-        {isResolved ? (
+        {isSettled ? (
           <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-emerald-400">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>Winner: {m.resolution?.winnerOutcomeId ?? m.finalOutcome ?? "Settled"} · Paid out</span>
+            <span>Winner: {m.finalOutcome ? `${m.finalOutcome}: Won` : "Settled · Paid out"}</span>
           </div>
         ) : isDisputed ? (
           <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2 text-xs font-semibold text-amber-400">
@@ -209,6 +209,9 @@ export function MarketCard({ m: base }: { m: Market }) {
                     <img
                       src={sport.homeCrest}
                       alt={sport.home}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
                       className="h-4 w-4 shrink-0 bg-transparent object-contain"
                     />
                   ) : (
@@ -228,6 +231,9 @@ export function MarketCard({ m: base }: { m: Market }) {
                     <img
                       src={sport.awayCrest}
                       alt={sport.away}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
                       className="h-4 w-4 shrink-0 bg-transparent object-contain"
                     />
                   ) : (
@@ -241,7 +247,7 @@ export function MarketCard({ m: base }: { m: Market }) {
               </div>
             </div>
 
-            {/* 3 Outcome Buttons (Home / Draw / Away) */}
+            {/* 3 Outcome Buttons (Team A / Draw / Team B) */}
             <div className="grid grid-cols-3 gap-1.5">
               {m.outcomes.map((o) => (
                 <button
@@ -257,13 +263,20 @@ export function MarketCard({ m: base }: { m: Market }) {
             </div>
           </div>
         ) : isMulti ? (
-          /* Multi-Outcome Markets: Stacked candidates with distinct colors or avatar */
+          /* Multi-Outcome Markets: Stacked candidates with individual image or distinct colors */
           <div className="flex flex-col gap-1.5">
             {m.outcomes.slice(0, 2).map((o, idx) => (
               <div key={o.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
                   {o.img ? (
-                    <img src={o.img} alt={o.label} className="h-4 w-4 rounded-full object-cover shrink-0" />
+                    <img
+                      src={o.img}
+                      alt={o.label}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                      className="h-4 w-4 rounded-full object-cover shrink-0"
+                    />
                   ) : (
                     <span
                       className="h-2 w-2 rounded-full shrink-0"
@@ -299,6 +312,7 @@ export function MarketCard({ m: base }: { m: Market }) {
           </div>
         )}
       </div>
+
 
       {/* 3. Card Footer */}
       <div className="flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
