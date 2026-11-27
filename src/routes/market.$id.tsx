@@ -276,11 +276,11 @@ function ProposedBanner({ proposed, onDispute }: { proposed: Proposed; onDispute
 
 function MarketPage() {
   const { id } = Route.useLoaderData();
-  const m = useMarket(id)!;
+  const m = useMarket(id);
   const adminNews = useMarketNews(id);
   const { slip, openSlip, positions, user, openAuth, balance, adjustBalance, setSlipDocked } =
     useStore();
-  const [sel, setSel] = useState(m.outcomes[0]!.id);
+  const [sel, setSel] = useState(m?.outcomes?.[0]?.id ?? "o0");
   const [view, setView] = useState<string>("all");
   const [chartOpen, setChartOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -310,9 +310,18 @@ function MarketPage() {
     setSlipDocked(true);
     return () => setSlipDocked(false);
   }, [setSlipDocked]);
+  if (!m || !m.outcomes || m.outcomes.length === 0) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center">
+        <div className="inline-block size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading market details...</p>
+      </div>
+    );
+  }
+
   const selected = slip?.marketId === m.id ? slip.outcomeId : sel;
-  const o = m.outcomes.find((x) => x.id === selected)!;
-  const idx = m.outcomes.indexOf(o);
+  const o = m.outcomes.find((x) => x.id === selected) ?? m.outcomes[0]!;
+  const idx = Math.max(0, m.outcomes.indexOf(o));
   const binary = m.outcomes.length === 2;
   const colors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
   const color = binary
