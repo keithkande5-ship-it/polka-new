@@ -277,10 +277,24 @@ function ProposedBanner({ proposed, onDispute }: { proposed: Proposed; onDispute
 function MarketPage() {
   const { id } = Route.useLoaderData();
   const m = useMarket(id);
+
+  if (!m || !m.outcomes || m.outcomes.length === 0) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-24 text-center">
+        <div className="inline-block size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="mt-4 text-sm text-muted-foreground">Loading market details...</p>
+      </div>
+    );
+  }
+
+  return <MarketPageContent m={m} id={id} />;
+}
+
+function MarketPageContent({ m, id }: { m: Market; id: string }) {
   const adminNews = useMarketNews(id);
   const { slip, openSlip, positions, user, openAuth, balance, adjustBalance, setSlipDocked } =
     useStore();
-  const [sel, setSel] = useState(m?.outcomes?.[0]?.id ?? "o0");
+  const [sel, setSel] = useState(m.outcomes[0]?.id ?? "o0");
   const [view, setView] = useState<string>("all");
   const [chartOpen, setChartOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
