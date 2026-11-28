@@ -135,12 +135,15 @@ function Candles({
   entries: { id: string; p: number; up: boolean }[];
   spanMs: number;
 }) {
-  const bucketSec = Math.max(5, Math.floor(spanMs / 24000));
+  const bucketSec = Math.max(3, Math.floor(spanMs / 20000));
   const bucketMs = bucketSec * 1000;
-  const N = 24;
-  const first = Math.floor((roundStart - spanMs) / bucketMs);
+  const winEnd = now + 2000;
+  const winStart = winEnd - spanMs;
+  const first = Math.floor(winStart / bucketMs);
+  const lastK = Math.floor(winEnd / bucketMs);
   const buckets = new Map<number, { o: number; h: number; l: number; c: number }>();
   let prevClose: number | null = null;
+
   for (const { t, p } of series) {
     const k = Math.floor(t / bucketMs);
     if (k < first) {
@@ -156,40 +159,92 @@ function Candles({
     }
     prevClose = p;
   }
+
   const liveK = Math.floor(now / bucketMs);
   const vals = [...buckets.values()];
   const all = vals.flatMap((v) => [v.h, v.l]).concat(lock ? [lock] : [], entries.map((e) => e.p));
   if (!all.length) return <div className="h-full w-full animate-pulse rounded-lg bg-muted/70" />;
+
   const rawLo = Math.min(...all), rawHi = Math.max(...all);
-  const padV = (rawHi - rawLo) * 0.12 || rawHi * 0.0002 || 1;
+  const padV = (rawHi - rawLo) * 0.18 || rawHi * 0.0003 || 1;
   const lo = rawLo - padV, hi = rawHi + padV;
   const span = hi - lo;
-  const W = 600, H = 280, top = 10, bottom = 22, axisW = 72, plotW = W - axisW;
+  const W = 600, H = 280, top = 14, bottom = 26, axisW = 75, plotW = W - axisW;
   const plotH = H - top - bottom;
   const y = (v: number) => top + (1 - (v - lo) / span) * plotH;
-  const cw = plotW / N;
-  const bodyW = Math.max(3, cw * 0.62);
+  const totalSlots = Math.max(1, lastK - first + 1);
+  const cw = plotW / totalSlots;
+  const bodyW = Math.max(4, Math.min(16, cw * 0.65));
   const xOf = (k: number) => (k - first) * cw + cw / 2;
-  const openX = ((roundStart - (roundStart - spanMs)) / (spanMs * 2)) * plotW;
- const last = buckets.get(liveK) ?? vals.at(-1);
-const isUp = (last?.c ?? 0) >= (lock ?? 0);
-const trackerColor = isUp ? "var(--up)" : "var(--down)";
+  const last = buckets.get(liveK) ?? vals.at(-1);
+  const isUp = (last?.c ?? 0) >= (lock ?? (vals[0]?.o ?? 0));
+  const trackerColor = isUp ? "var(--up)" : "var(--down)";
+
+  // Realtime X-Axis Time Ticks (mm:ss)
+  const xTicks = [0, 0.33, 0.66, 1].map((pct) => {
+    const t = winStart + pct * spanMs;
+    const date = new Date(t);
+    const label = `${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
+    const x = pct * plotW;
+    return { x, label };
+  });
+
+  // Dynamic Y-Axis Reference Price Levels
+  const yTicks = [0.25, 0.5, 0.75].map((pct) => ({
+    val: lo + pct * span,
+    yPos: y(lo + pct * span),
+  }));
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full overflow-visible" preserveAspectRatio="none">
       <defs>
-        <pattern id="grid" width="60" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 60 0 L 0 0 0 40" fill="none" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="2 4" />
+        <pattern id="grid" width="60" height="35" patternUnits="userSpaceOnUse">
+          <path d="M 60 0 L 0 0 0 35" fill="none" stroke="var(--border)" strokeWidth="0.5" strokeDasharray="2 4" />
         </pattern>
       </defs>
       <rect width={plotW} height={plotH} y={top} fill="url(#grid)" opacity={0.6} />
+
+      {/* Horizontal Y-Axis Guideline Ticks */}
+      {yTicks.map((t, idx) => (
+        <g key={idx}>
+          <line x1={0} x2={plotW} y1={t.yPos} y2={t.yPos} stroke="var(--border)" strokeWidth="0.5" strokeDasharray="2 4" opacity={0.4} />
+          <text x={plotW + 8} y={t.yPos + 3} fill="var(--muted-foreground)" fontSize="8.5" fontFamily="var(--font-mono)">
+            {fmtPrice(t.val, decimals)}
+          </text>
+        </g>
+      ))}
+
+      {/* Y-Axis High & Low Guide Prices */}
+      <text x={plotW + 8} y={top + 6} fill="var(--muted-foreground)" fontSize="9" fontWeight="bold" fontFamily="var(--font-mono)">
+        {fmtPrice(hi, decimals)}
+      </text>
+      <text x={plotW + 8} y={top + plotH} fill="var(--muted-foreground)" fontSize="9" fontWeight="bold" fontFamily="var(--font-mono)">
+        {fmtPrice(lo, decimals)}
+      </text>
+
+      {/* X-Axis Realtime Time Labels */}
+      {xTicks.map((xt, idx) => (
+        <g key={idx}>
+          <line x1={xt.x} x2={xt.x} y1={top + plotH} y2={top + plotH + 4} stroke="var(--border)" strokeWidth="1" />
+          <text
+            x={xt.x}
+            y={H - 8}
+            textAnchor={idx === 0 ? "start" : idx === xTicks.length - 1 ? "end" : "middle"}
+            fill="var(--muted-foreground)"
+            fontSize="9"
+            fontFamily="var(--font-mono)"
+          >
+            {xt.label}
+          </text>
+        </g>
+      ))}
 
       {/* Orange Target Line (Price to Beat) */}
       {lock && (
         <g>
           <line x1={0} x2={plotW} y1={y(lock)} y2={y(lock)} stroke="#f7931a" strokeWidth="1.5" strokeDasharray="4 3" />
-          <rect x={plotW + 4} y={y(lock) - 10} width="66" height="20" rx="4" fill="#f7931a" />
-          <text x={plotW + 8} y={y(lock) + 4} fill="#000000" fontSize="10" fontWeight="bold" fontFamily="var(--font-mono)">
+          <rect x={plotW + 4} y={y(lock) - 10} width="68" height="20" rx="4" fill="#f7931a" />
+          <text x={plotW + 7} y={y(lock) + 4} fill="#000000" fontSize="9.5" fontWeight="bold" fontFamily="var(--font-mono)">
             {fmtPrice(lock, decimals)}
           </text>
         </g>
@@ -198,24 +253,13 @@ const trackerColor = isUp ? "var(--up)" : "var(--down)";
       {/* Dynamic Live Price Tracker Line */}
       {last && (
         <g>
-          <line x1={0} x2={plotW} y1={y(last.c)} y2={y(last.c)} stroke={trackerColor} strokeWidth="1.2" strokeDasharray="3 3" opacity={0.8} />
-          <rect x={plotW + 4} y={y(last.c) - 10} width="66" height="20" rx="4" fill={trackerColor} />
-          <text x={plotW + 8} y={y(last.c) + 4} fill="#ffffff" fontSize="10" fontWeight="bold" fontFamily="var(--font-mono)">
+          <line x1={0} x2={plotW} y1={y(last.c)} y2={y(last.c)} stroke={trackerColor} strokeWidth="1.3" strokeDasharray="3 3" opacity={0.85} />
+          <rect x={plotW + 4} y={y(last.c) - 10} width="68" height="20" rx="4" fill={trackerColor} />
+          <text x={plotW + 7} y={y(last.c) + 4} fill="#ffffff" fontSize="9.5" fontWeight="bold" fontFamily="var(--font-mono)">
             {fmtPrice(last.c, decimals)}
           </text>
         </g>
       )}
-
-      {/* Y-Axis High & Low Guide Prices */}
-      <text x={plotW + 8} y={top + 10} fill="var(--muted-foreground)" fontSize="9" fontFamily="var(--font-mono)">
-        {fmtPrice(hi, decimals)}
-      </text>
-      <text x={plotW + 8} y={top + plotH} fill="var(--muted-foreground)" fontSize="9" fontFamily="var(--font-mono)">
-        {fmtPrice(lo, decimals)}
-      </text>
-
-      {/* Round Open Line */}
-      <line x1={openX} x2={openX} y1={top} y2={top + plotH} stroke="var(--primary)" strokeWidth="1" strokeDasharray="3 3" opacity={0.6} />
 
       {/* Candlesticks */}
       {[...buckets.entries()].map(([k, c]) => {
@@ -233,13 +277,14 @@ const trackerColor = isUp ? "var(--up)" : "var(--down)";
         );
       })}
 
-      {/* Entry Markers */}
+      {/* User Entry Markers */}
       {entries.map((e) => (
         <circle key={e.id} cx={plotW - 12} cy={y(e.p)} r="3.5" fill={e.up ? "var(--up)" : "var(--down)"} stroke="var(--background)" strokeWidth="1" />
       ))}
-      </svg>
+    </svg>
   );
 }
+
 
 /** Live win/lose tug-of-war for each open order this round. */
 function RoundPoll({
@@ -633,10 +678,10 @@ function Flash() {
   };
 
   // Right-to-left moving chart calculations
-  const now = Date.now();
+   const now = Date.now();
   const tfSec = timeframe === "60s" ? 60 : timeframe === "5m" ? 300 : timeframe === "10m" ? 600 : 900;
   const tfMs = tfSec * 1000;
-  const roundStart = (round ?? Math.floor(now / tfMs)) * tfMs;
+  const roundStart = Math.floor(now / tfMs) * tfMs;
   const winEnd = now + 3000;
   const winStart = winEnd - tfMs;
   const visible = series.filter((t) => t.t >= winStart - 5000);
