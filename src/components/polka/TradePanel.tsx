@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { getRake, safeQuote } from "@/lib/trading-rules";
 import { Lock, Trophy } from "lucide-react";
 import { toast } from "sonner";
@@ -7,7 +8,6 @@ import { Btn3D, Thumb } from "./ui";
 import { Odometer } from "./Odometer";
 import { canBuy, DEFAULT_EVENT_POT_RAKE_BPS, zeroFeeRemainingMs } from "@/lib/trading-rules";
 import { cn } from "@/lib/utils";
-
 const chips = [50, 100, 500, 1000];
 
 /** After the mobile keyboard closes, snap the page and the slide-up back down. */
