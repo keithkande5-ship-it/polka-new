@@ -473,7 +473,12 @@ export function Cashier() {
             </div>
           )}
         </div>
-      </SheetContent>
+         </SheetContent>
     </Sheet>
   );
 }
+
+export function Onboarding() {
+  return null;
+}
+
