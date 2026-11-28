@@ -301,8 +301,9 @@ function MarketPageContent({ m, id }: { m: Market; id: string }) {
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [dispute, setDispute] = useState({ reason: "", proof: "" });
   const [draft, setDraft] = useState("");
-    const [comments, setComments] = useState(m.comments);
+  const [comments, setComments] = useState(m?.comments ?? []);
   useEffect(() => {
+    if (!m) return;
     setComments(readMarketComments(m.id, m.comments));
     fetchLiveComments(m.id).then((live) => {
       if (live.length > 0) {
@@ -310,10 +311,10 @@ function MarketPageContent({ m, id }: { m: Market; id: string }) {
         saveMarketComments(m.id, live);
       }
     });
-    setSel(m.outcomes[0]?.id ?? "");
+    setSel(m.outcomes?.[0]?.id ?? "");
     setView("all");
     setDraft("");
-  }, [m.id]);
+  }, [m?.id]);
 
   const updateComments = (next: Comment[]) => {
     setComments(next);
