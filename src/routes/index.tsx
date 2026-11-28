@@ -87,14 +87,14 @@ function Home() {
           m.outcomes.some((o) => o.label.toLowerCase().includes(q));
         if (!match) return false;
       }
-
       return true;
     }).sort((a, b) => {
       if (sort === "trending") return b.volume - a.volume;
       if (sort === "closing") return a.closesAt - b.closesAt;
       return b.id.localeCompare(a.id); // Newest
     });
-  }, [cat, status, sort, searchQuery]);
+  }, [cat, status, sort, searchQuery, marketVersion]);
+
 
   return (
     <div className="min-h-screen bg-background">
