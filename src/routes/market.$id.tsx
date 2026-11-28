@@ -696,7 +696,13 @@ function MarketPageContent({ m, id }: { m: Market; id: string }) {
           </div>
         )}
 
-        <RulesNewsTabs rules={m.rules} oracle={m.oracle} news={[...adminNews, ...m.news]} status={m.state ?? "open"} />
+        <RulesNewsTabs
+          rules={m.rules}
+          oracle={m.oracle}
+          news={[...adminNews, ...m.news]}
+          status={m.state === "settled" ? "resolved" : m.state === "proposed" ? "disputed" : (m.state ?? "open")}
+        />
+
         <section className="relative rounded-xl border bg-card p-4 pb-7">
           <ChartWatermark />
           <h3 className="flex items-center gap-2 text-sm font-semibold">
@@ -726,7 +732,7 @@ function MarketPageContent({ m, id }: { m: Market; id: string }) {
                   text,
                   ago: "just now",
                   likes: 0,
-                  stake: s ? { amount: s.stake, side: s.outcome } : undefined,
+                  ...(s ? { stake: { amount: s.stake, side: s.outcome } } : {}),
                 };
                 updateComments([optim, ...comments]);
                 await insertMarketComment({
@@ -734,8 +740,9 @@ function MarketPageContent({ m, id }: { m: Market; id: string }) {
                   userId: user.id,
                   userHandle: user.handle,
                   text,
-                  stake: s ? { amount: s.stake, side: s.outcome } : undefined,
+                  ...(s ? { stake: { amount: s.stake, side: s.outcome } } : {}),
                 });
+
               }}
             >
               Post
