@@ -1426,16 +1426,26 @@ function Flash() {
             </div>
           )}
 
-         {phase === "next" && lastOutcome && (
-  <div className="flex items-center justify-center rounded-xl border border-border bg-secondary px-3 py-2">
-    <span className="text-xs font-bold">
-      Outcome:{" "}
-      <span className={cn(lastOutcome === "up" ? "text-up" : "text-down")}>
-        {lastOutcome.toUpperCase()}
-      </span>
-    </span>
-  </div>
-)}
+                  {/* Starting Next Round Banner */}
+          {phase === "next" && (
+            <div className="flex items-center justify-between rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2.5 text-primary">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
+                <span className="text-xs font-bold">
+                  Starting Round #{round !== null ? (round + 1) % 10000 : "—"}
+                </span>
+                {lastOutcome && (
+                  <span className="text-[10px] text-muted-foreground">
+                    (Prev: <strong className={lastOutcome === "up" ? "text-up" : "text-down"}>{lastOutcome.toUpperCase()}</strong>)
+                  </span>
+                )}
+              </div>
+              <span className="rounded-md bg-primary/20 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+                in {remaining}s
+              </span>
+            </div>
+          )}
+
 
           {/* Regular Mobile Betting Controls */}
           {!isDetermining && !resolution && (
